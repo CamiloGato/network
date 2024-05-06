@@ -5,6 +5,7 @@ import json
 
 class Client:
     def __init__(self, router_host: str, router_port: int):
+        # Client network configuration
         self.router_host: str = router_host
         self.router_port: int = router_port
         self.client: Socket = Socket(socket.AF_INET, socket.SOCK_STREAM)
