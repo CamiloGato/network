@@ -1,6 +1,6 @@
 from socket import socket as Socket
 import socket
-
+import threading
 from typing import Dict, Tuple
 import json
 
@@ -42,9 +42,25 @@ class Router:
         while True:
             client, address = self.server_socket.accept()
             print(f"Connection established with {address}")
+            self.clients[address] = client
+            threading.Thread(target=self.handle_client, args=(client, address), daemon=True).start()
+
+    def handle_client(self, client: Socket, address: Tuple[str, int]):
+        try:
+            # TODO: Process client requests here
+            data = client.recv(1024)
+            if data:
+                client.sendall(data)
+        except Exception as ex:
+            print(f"Error handling client {address}: {ex}")
+        finally:
             client.close()
+            if address in self.clients:
+                del self.clients[address]
 
     def stop(self) -> None:
+        for client in self.clients.values():
+            client.close()
         self.server_socket.close()
+        self.clients.clear()
         print("Router stopped.")
-
