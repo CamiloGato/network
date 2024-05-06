@@ -1,7 +1,7 @@
 from typing import Dict, List, Any
 from networkx import Graph, dijkstra_path, NetworkXNoPath
-import networkx as nx
-import matplotlib.pyplot as plt
+
+from network.data import DataRoute, DataPath
 import json
 
 
@@ -12,11 +12,19 @@ class Network:
         self.graph: Graph = Graph()
 
     def add_edge(self, u: str, v: str, w: int) -> None:
-        """Add an edge to the graph with a specified weight if the nodes and weight are valid."""
+        """ Add an edge to the graph with a specified weight if the nodes and weight are valid. """
         if isinstance(w, int) and w > 0:
             self.graph.add_edge(u, v, weight=w)
         else:
             print("Invalid weight; must be a positive integer.")
+
+    def add_node(self, node: str, ip: str, port: int):
+        """" Add nodes to the graph """
+        self.graph.add_node(
+            node,
+            ip=ip,
+            port=port
+        )
 
     def remove_node(self, node: str) -> None:
         """Remove a node from the graph if it exists."""
@@ -36,73 +44,48 @@ class Network:
             print(f"Error calculating path from {start} to {end}: {ex}")
             return []
 
-    def save_graph(self, filename: str) -> None:
-        """Save the graph to a JSON file."""
-        with open(filename, 'w') as f:
-            json.dump(
-                dict(
-                    nodes=list(self.graph.nodes()),
-                    edges=list(self.graph.edges(data=True))),
-                f
-            )
+    def node_to_datapath(self, node: str) -> DataPath:
+        """"  """
+        node_data = self.graph.nodes[node]
 
-    def load_graph(self, filename: str) -> None:
-        """Load a graph from a JSON file.
+        return DataPath(
+            name=node,
+            ip=node_data.get("ip"),
+            port=node_data.get("port")
+        )
 
-        The JSON file should contain:
-        - 'nodes': a list of node identifiers
-        - 'edges': a list of tuples (u, v, d) where u and v are node identifiers
-          and d is a dictionary of edge attributes, e.g., {'weight': w}.
-        """
-        try:
-            with open(filename, 'r') as f:
-                data: Dict[str, Any] = json.load(f)
-            self.graph.clear()
-            self.graph.add_nodes_from(data['nodes'])
-            for u, v, d in data['edges']:
-                self.graph.add_edge(u, v, **d)
-        except FileNotFoundError:
-            print("The graph file does not exist.")
-        except json.JSONDecodeError:
-            print("Error decoding the graph file.")
+    def generate_data_route(self, source: str, target: str, path: List[str]) -> DataRoute:
+        """"  """
+        paths_data = [self.node_to_datapath(node) for node in path]
+        source_data: DataPath = self.node_to_datapath(source)
+        destination_data: DataPath = self.node_to_datapath(target)
 
-    def get_all_routes(self) -> Dict[str, Dict[str, List[str]]]:
-        """Calculate all possible routes between all pairs of nodes."""
-        all_routes = {}
+        route_data: DataRoute = DataRoute(
+            source=source_data,
+            destination=destination_data,
+            paths=paths_data
+        )
+
+        return route_data
+
+    def get_all_routes(self) -> List[DataRoute]:
+        """ Calculate all possible routes between all pairs of nodes. """
+        all_routes: List[DataRoute] = []
         for source in self.graph.nodes():
-            all_routes[source] = {}
-            for target in self.graph.nodes():
-                if source != target:
-                    try:
-                        path: List[str] = dijkstra_path(self.graph, source, target)
-                        all_routes[source][target] = path
-                    except NetworkXNoPath:
-                        all_routes[source][target] = []
-                        print(f"No path from {source} to {target}")
-                    except Exception as e:
-                        all_routes[source][target] = []
-                        print(f"Error calculating path from {source} to {target}: {e}")
+            data: List[DataRoute] = self.get_routes_for(source)
+            for route in data:
+                all_routes.append(route)
+
         return all_routes
 
-    def get_all_routes_json(self) -> str:
-        """Get all routes in JSON format."""
-        routes: str = json.dumps(self.get_all_routes())
-        return routes
+    def get_routes_for(self, node: str) -> List[DataRoute]:
+        all_routes: List[DataRoute] = []
 
-    def visualize_graph(self) -> None:
-        """Visualize the graph using matplotlib."""
-        pos = nx.spring_layout(self.graph)
-        nx.draw(
-            self.graph,
-            pos,
-            with_labels=True,
-            node_color='skyblue',
-            node_size=700,
-            edge_color='#FF5733',
-            linewidths=1,
-            font_size=15
-        )
-        labels = nx.get_edge_attributes(self.graph, 'weight')
-        nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=labels)
-        plt.title('Graph')
-        plt.show()
+        for target in self.graph.nodes():
+            if node != target:
+                path: List[str] = self.shortest_path(node, target)
+                route_data: DataRoute = self.generate_data_route(node, target, path)
+
+                all_routes.append(route_data)
+
+        return all_routes

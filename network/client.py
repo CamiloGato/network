@@ -1,6 +1,9 @@
 from socket import socket as Socket
+from data import  DataMessage
 import socket
 import json
+
+from network.data import DataMessage
 
 
 class Client:
@@ -13,27 +16,37 @@ class Client:
     def connect(self) -> None:
         try:
             self.client.connect((self.router_host, self.router_port))
-            print(f"Connected to the router {self.router_host}:{self.router_port}")
+            print(f"Connected to the Router {self.router_host}:{self.router_port}")
         except Exception as ex:
             print(f"Failed to connect to the router: {ex}")
+            if self.client:
+                self.client.close()
 
-    def send_message(self, destination: str, message: str) -> None:
+    def send_message(self, destination_ip: str, destination_port: int, message: str) -> None:
         try:
-            data = {"destination": destination, "message": message}
-            json_data = json.dumps(data)
+            data: DataMessage = DataMessage(
+                destination_ip,
+                destination_port,
+                message,
+                []
+            )
+
+            json_data = json.dumps(data.__dict__)
             self.client.sendall(json_data.encode('utf-8'))
-            print(f"Message sent to {destination}: {message}")
+            print(f"Message sent to {destination_ip}:{destination_port} -> {message}")
         except Exception as ex:
             print(f"Failed to send message: {ex}")
 
-    def receive_message(self) -> str:
+    def receive_message(self) -> DataMessage | None:
         try:
-            data = self.client.recv(1024)
-            return data.decode('utf-8')
+            data = self.client.recv(1024).decode('utf-8')
+            data_loaded: DataMessage = json.loads(data)
+            return data_loaded
         except Exception as e:
             print(f"Failed to receive message: {e}")
-            return ""
+            return None
 
     def stop(self):
-        self.client.close()
-        print("Client Stopped.")
+        if self.client:
+            self.client.close()
+            print("Client Stopped.")
