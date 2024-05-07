@@ -1,9 +1,8 @@
 from socket import socket as Socket
-from data import  DataMessage
 import socket
 import json
 
-from network.data import DataMessage
+from network.common.data import DataMessage
 
 
 class Client:

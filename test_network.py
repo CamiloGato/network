@@ -1,8 +1,8 @@
 import json
 from typing import List
 
-from network.data import DataRoute
-from network.network import Network
+from network.common.data import DataRoute
+from network.common.network import Network
 
 
 def main():
