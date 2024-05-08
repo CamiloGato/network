@@ -4,7 +4,7 @@ import time
 from socket import socket as Socket
 import threading
 from typing import Dict, Tuple, List
-from network.common.data import DataMessage
+from network.common.data import DataMessage, DataRoute
 from network.common.network import Network
 from network.common.tcp_functions import check_connection
 
@@ -35,10 +35,8 @@ class Controller:
         try:
             while True:
                 client, address = self.server_socket.accept()
-                node: str = f"R{address[1]}"
                 with self.lock:
                     self.clients[client] = address
-                    self.update_nodes_routes(node, address)
 
                 print(f"Connection established with| R{address[1]} | {address[0]}:{address[1]}")
                 threading.Thread(target=self.handle_client, args=(client, address)).start()
@@ -56,10 +54,8 @@ class Controller:
                 if not data:
                     break
                 data_decoded: str = data.decode("utf-8")
-                data_message: DataMessage = self.process_data(data_decoded)
+                data_message: DataMessage = json.loads(data_decoded)
                 print(f"Request received from {address}: {data_message}")
-
-                time.sleep(3)
 
         except Exception as e:
             print(f"Error handling client {address}: {e}")
@@ -72,9 +68,10 @@ class Controller:
                     self.network.remove_route_for(node)
             print(f"Connection closed with {address}")
 
-    def send_routes(self, client: Socket) -> None:
-        # routes: str = self.network.get_all_routes_json()
-        # client.sendall(routes.encode('utf-8'))
+    def send_routes(self, client: Socket, address: Tuple[str, int]) -> None:
+        routes: List[DataRoute] = self.network.get_routes_for()
+
+        client.sendall(routes.encode('utf-8'))
         pass
 
     def stop(self) -> None:
@@ -84,14 +81,3 @@ class Controller:
                 client.close()
             self.clients.clear()
         print("Controller stopped.")
-
-    def update_nodes_routes(self, node: str, address: Tuple[str, int]):
-        self.network.add_node(node, address[0], address[1])
-        nodes: List[str] = self.network.get_all_nodes()
-        for node in nodes:
-            self.network.store_route_for(node)
-
-    def process_data(self, data_encoded: str) -> DataMessage:
-        data_message: DataMessage = json.loads(data_encoded)
-
-        return data_message

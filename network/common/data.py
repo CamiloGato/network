@@ -1,7 +1,7 @@
 from typing import List
 
 
-class DataPath:
+class DataNode:
     def __init__(self, name: str, ip: str, port: int):
         self.name: str = name
         self.ip: str = ip
@@ -16,10 +16,10 @@ class DataPath:
 
 
 class DataRoute:
-    def __init__(self, source: DataPath, destination: DataPath, paths: List[DataPath]):
-        self.source: DataPath = source
-        self.destination: DataPath = destination
-        self.paths: List[DataPath] = paths
+    def __init__(self, source: DataNode, destination: DataNode, paths: List[DataNode]):
+        self.source: DataNode = source
+        self.destination: DataNode = destination
+        self.paths: List[DataNode] = paths
 
     def __dict__(self):
         return {
@@ -30,11 +30,11 @@ class DataRoute:
 
 
 class DataMessage:
-    def __init__(self, destination_ip: str, destination_port: int, message: str, path: List[DataPath]):
+    def __init__(self, destination_ip: str, destination_port: int, message: str, path: List[DataNode]):
         self.destination_ip: str = destination_ip
         self.destination_port: int = destination_port
         self.message: str = message
-        self.path: List[DataPath] = path
+        self.path: List[DataNode] = path
 
     def __dict__(self):
         return {
