@@ -2,7 +2,13 @@ import json
 import socket
 import threading
 
-from network.common.data import DataMessage
+from network.common.data import DataMessage, DataNode
+
+
+def get_client_address(client_socket):
+    # Obtener la dirección IP y el puerto del cliente
+    client_ip, client_port = client_socket.getsockname()
+    return client_ip, client_port
 
 
 def send_message(client_socket, message):
@@ -38,6 +44,17 @@ def main():
         # Conectar al servidor
         client_socket.connect((host, port))
         print(f"Conectado al servidor en {host}:{port}")
+
+        input_message = input("Ingrese el nombre del nodo: ")
+        client_ip, client_port = get_client_address(client_socket)
+
+        message_auth = DataNode(
+            name=input_message,
+            ip=client_ip,
+            port=client_port
+        )
+
+        send_message(client_socket, message_auth.__dict__())
 
         # Mantener el cliente abierto para enviar mensajes
         while True:
