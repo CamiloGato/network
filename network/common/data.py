@@ -14,6 +14,12 @@ class DataNode:
             "port": self.port
         }
 
+    def __str__(self) -> str:
+        return (f"Node: {self.name} | "
+                f"Ip: {self.ip} | "
+                f"Port: {self.port}"
+                )
+
     @classmethod
     def from_json(cls, json_data):
         return cls(json_data['name'], json_data['ip'], json_data['port'])
@@ -32,6 +38,12 @@ class DataRoute:
             "path": [path.__dict__() for path in self.paths]
         }
 
+    def __str__(self) -> str:
+        return (f"Route: Source: {self.source.__str__()} | "
+                f"Destination: {self.destination.__str__()} | "
+                f"Path: {self.paths.__str__()}"
+                )
+
 
 class DataMessage:
     def __init__(self, destination_ip: str, destination_port: int, message: str, path: List[DataNode]):
@@ -47,3 +59,10 @@ class DataMessage:
             "message": self.message,
             "path": [path.__dict__() for path in self.path]
         }
+
+    def __str__(self) -> str:
+        return (f"Message: Destination_Ip: {self.destination_ip} | "
+                f"Destination_Port: {self.destination_port} | "
+                f"Message: {self.message} | "
+                f"Path: {self.path.__str__()}"
+                )

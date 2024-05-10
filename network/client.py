@@ -5,7 +5,10 @@ from network.common.data import DataMessage
 
 
 class Client:
-    def __init__(self, router_host: str, router_port: int):
+    def __init__(self,
+                 router_host: str,
+                 router_port: int
+                 ) -> None:
         # Client network configuration
         self.router_host: str = router_host
         self.router_port: int = router_port
@@ -29,7 +32,7 @@ class Client:
                 []
             )
 
-            json_data = json.dumps(data.__dict__)
+            json_data = json.dumps(data)
             self.client.sendall(json_data.encode('utf-8'))
             print(f"Message sent to {destination_ip}:{destination_port} -> {message}")
         except Exception as ex:

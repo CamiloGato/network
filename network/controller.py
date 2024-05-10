@@ -2,15 +2,19 @@ import json
 import socket
 import threading
 import time
-from typing import Dict, Tuple
+from typing import Dict, List
 
-from network.common.data import DataNode
+from network.common.data import DataNode, DataRoute
 from network.common.network import Network
 from network.common.tcp_functions import check_connection
 
 
 class Controller:
-    def __init__(self, host: str, port: int, network: Network):
+    def __init__(self,
+                 host: str,
+                 port: int,
+                 network: Network
+                 ) -> None:
         # Host and network configuration
         self.host: str = host
         self.port: int = port
@@ -18,7 +22,7 @@ class Controller:
 
         # Socket configuration & clients
         self.server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clients: Dict[socket.socket, Tuple[str, int]] = {}
+        self.clients: Dict[DataNode, socket.socket] = {}
         self.lock = threading.Lock()
 
     def start(self) -> None:
@@ -35,57 +39,59 @@ class Controller:
         try:
             while True:
                 client, address = self.server_socket.accept()
+                auth: bytes = client.recv(1024)
+                data_decoded: str = auth.decode("utf-8")
+                data_auth: dict = json.loads(data_decoded)
+                node: DataNode = DataNode.from_json(data_auth)
+                self.add_node(node)
+
                 with self.lock:
-                    self.clients[client] = address
+                    self.clients[node] = client
 
                 print(f"Connection established with {address}")
-                threading.Thread(target=self.handle_client, args=(client, address)).start()
-                threading.Thread(target=self.client_connection, args=(client, address)).start()
+                threading.Thread(target=self.client_connection, args=(client, node)).start()
+                threading.Thread(target=self.handle_client, args=(client, node)).start()
         except Exception as e:
             print(f"Error accepting connections: {e}")
 
-    def client_connection(self, client: socket.socket, address: Tuple[str, int]) -> None:
+    def client_connection(self, client: socket.socket, node: DataNode) -> None:
         try:
             while True:
                 if not check_connection(client):
-                    print(f"Connection Lost - {address}")
+                    print(f"Connection Lost - {node}")
                     break
-                time.sleep(3)
+                time.sleep(10)
         except Exception as ex:
-            print(f"Error handling connection {address}: {ex}")
+            print(f"Error handling connection {node}: {ex}")
         finally:
-            self.close_client(client, address)
+            self.close_client(client, node)
 
-    def handle_client(self, client: socket.socket, address: Tuple[str, int]) -> None:
+    def handle_client(self, client: socket.socket, node: DataNode) -> None:
         try:
-            auth: bytes = client.recv(1024)
-            data_decoded: str = auth.decode("utf-8")
-            data_auth: dict = json.loads(data_decoded)
-            self.add_node(DataNode.from_json(data_auth))
-
             while True:
                 data: bytes = client.recv(1024)
                 if not data:
                     break
                 data_decoded: str = data.decode("utf-8")
                 data_message: dict = json.loads(data_decoded)
-                print(f"Request received from {address}: {data_message}")
+                print(f"{node.name} sends: {data_message}")
 
         except Exception as ex:
-            print(f"Error handling client {address}: {ex}")
+            print(f"Error handling client {node.name}: {ex}")
 
-    # def send_routes(self, client: socket.socket, address: Tuple[str, int]) -> None:
-    #     routes: List[DataRoute] = self.network.get_routes_for()
-    #
-    #     client.sendall(routes.encode('utf-8'))
-    #     pass
+    def send_routes(self, node: DataNode) -> None:
+        routes: List[DataRoute] = self.network.get_routes_for(node.name)
+        routes_json: str = json.dumps(routes.__dict__)
+        client: socket.socket = self.clients[node]
+        client.sendall(routes_json.encode('utf-8'))
+        pass
 
-    def close_client(self, client: socket.socket, address: Tuple[str, int]) -> None:
+    def close_client(self, client: socket.socket, node: DataNode) -> None:
         with self.lock:
-            if client in self.clients.keys():
+            if client in self.clients.values():
                 client.close()
-                del self.clients[client]
-        print(f"Connection closed with {address}")
+                del self.clients[node]
+        print(f"Connection closed with {node}")
 
     def add_node(self, node: DataNode) -> None:
         self.network.add_node(node)
@@ -96,7 +102,7 @@ class Controller:
     def stop(self) -> None:
         self.server_socket.close()
         with self.lock:
-            for client in self.clients.keys():
+            for client in self.clients.values():
                 client.close()
             self.clients.clear()
         print("Controller stopped.")

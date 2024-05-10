@@ -25,7 +25,7 @@ class Network:
         if isinstance(w, int) and w > 0:
             self.graph.add_edge(u, v, weight=w)
         else:
-            print("Invalid weight; must be a positive integer.")
+            print(f"Invalid weight {w}; must be a positive integer.")
 
     def add_node(self, node: DataNode) -> None:
         """" Add nodes to the graph """
@@ -45,10 +45,10 @@ class Network:
     def get_all_nodes(self) -> List[str]:
         return self.graph.nodes()
 
-    def shortest_path(self, start: DataNode, end: DataNode) -> list[str]:
+    def shortest_path(self, start: str, end: str) -> list[str]:
         """Find the shortest path from start to end using Dijkstra's algorithm."""
         try:
-            return dijkstra_path(self.graph, start.name, end.name)
+            return dijkstra_path(self.graph, start, end)
         except NetworkXNoPath:
             print(f"No path found from {start} to {end}.")
             return []
@@ -80,7 +80,7 @@ class Network:
 
         return route_data
 
-    def get_all_routes(self) -> List[DataRoute]:
+    def get_routes_all(self) -> List[DataRoute]:
         """ Calculate all possible routes between all pairs of nodes. """
         all_routes: List[DataRoute] = []
         for source in self.graph.nodes():
@@ -90,27 +90,27 @@ class Network:
 
         return all_routes
 
-    def get_routes_for(self, node: DataNode) -> List[DataRoute]:
+    def get_routes_for(self, node: str) -> List[DataRoute]:
         all_routes: List[DataRoute] = []
 
         for target in self.graph.nodes():
-            if node.name != target:
+            if node != target:
                 path: List[str] = self.shortest_path(node, target)
-                route_data: DataRoute = self._generate_data_route(node.name, target, path)
+                route_data: DataRoute = self._generate_data_route(node, target, path)
                 all_routes.append(route_data)
 
         return all_routes
 
-    def store_route_for(self, node: DataNode):
+    def store_route_for(self, node: str):
         routes: List[DataRoute] = self.get_routes_for(node)
-        filename: str = f"routes_{node.name}.json"
+        filename: str = f"routes_{node}.json"
         file_path: str = os.path.join(ROOT_DIR, "routes", filename)
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as f:
             json.dump([route.__dict__() for route in routes], f, indent=4)
 
-    def remove_route_for(self, node: DataNode):
-        filename: str = f"routes_{node.name}.json"
+    def remove_route_for(self, node: str):
+        filename: str = f"routes_{node}.json"
         file_path = os.path.join(ROOT_DIR, "routes", filename)
 
         try:
