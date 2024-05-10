@@ -2,7 +2,6 @@ import json
 import threading
 import time
 
-from network.common.data import DataNode
 from network.common.network import Network
 from network.controller import Controller
 from network.router import Router
