@@ -27,28 +27,28 @@ class Network:
         else:
             print("Invalid weight; must be a positive integer.")
 
-    def add_node(self, node: str, ip: str, port: int):
+    def add_node(self, node: DataNode) -> None:
         """" Add nodes to the graph """
         self.graph.add_node(
-            node,
-            ip=ip,
-            port=port
+            node.name,
+            ip=node.ip,
+            port=node.port
         )
 
-    def remove_node(self, node: str) -> None:
+    def remove_node(self, node: DataNode) -> None:
         """Remove a node from the graph if it exists."""
         if node in self.graph:
-            self.graph.remove_node(node)
+            self.graph.remove_node(node.name)
         else:
             print(f"Node {node} not found in the graph.")
 
     def get_all_nodes(self) -> List[str]:
         return self.graph.nodes()
 
-    def shortest_path(self, start: str, end: str) -> list[str]:
+    def shortest_path(self, start: DataNode, end: DataNode) -> list[str]:
         """Find the shortest path from start to end using Dijkstra's algorithm."""
         try:
-            return dijkstra_path(self.graph, start, end)
+            return dijkstra_path(self.graph, start.name, end.name)
         except NetworkXNoPath:
             print(f"No path found from {start} to {end}.")
             return []
@@ -66,7 +66,7 @@ class Network:
             port=node_data.get("port")
         )
 
-    def generate_data_route(self, source: str, target: str, path: List[str]) -> DataRoute:
+    def _generate_data_route(self, source: str, target: str, path: List[str]) -> DataRoute:
         """"  """
         paths_data = [self.node_to_datanode(node) for node in path]
         source_data: DataNode = self.node_to_datanode(source)
@@ -90,27 +90,27 @@ class Network:
 
         return all_routes
 
-    def get_routes_for(self, node: str) -> List[DataRoute]:
+    def get_routes_for(self, node: DataNode) -> List[DataRoute]:
         all_routes: List[DataRoute] = []
 
         for target in self.graph.nodes():
-            if node != target:
+            if node.name != target:
                 path: List[str] = self.shortest_path(node, target)
-                route_data: DataRoute = self.generate_data_route(node, target, path)
+                route_data: DataRoute = self._generate_data_route(node.name, target, path)
                 all_routes.append(route_data)
 
         return all_routes
 
-    def store_route_for(self, node: str):
+    def store_route_for(self, node: DataNode):
         routes: List[DataRoute] = self.get_routes_for(node)
-        filename: str = f"routes_{node}.json"
+        filename: str = f"routes_{node.name}.json"
         file_path: str = os.path.join(ROOT_DIR, "routes", filename)
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as f:
             json.dump([route.__dict__() for route in routes], f, indent=4)
 
-    def remove_route_for(self, node: str):
-        filename: str = f"routes_{node}.json"
+    def remove_route_for(self, node: DataNode):
+        filename: str = f"routes_{node.name}.json"
         file_path = os.path.join(ROOT_DIR, "routes", filename)
 
         try:

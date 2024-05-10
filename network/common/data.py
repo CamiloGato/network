@@ -14,6 +14,10 @@ class DataNode:
             "port": self.port
         }
 
+    @classmethod
+    def from_json(cls, json_data):
+        return cls(json_data['name'], json_data['ip'], json_data['port'])
+
 
 class DataRoute:
     def __init__(self, source: DataNode, destination: DataNode, paths: List[DataNode]):

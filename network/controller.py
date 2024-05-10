@@ -39,7 +39,7 @@ class Controller:
                 with self.lock:
                     self.clients[client] = address
 
-                print(f"Connection established with| R{address[1]} | {address[0]}:{address[1]}")
+                print(f"Connection established with {address}")
                 threading.Thread(target=self.handle_client, args=(client, address)).start()
                 threading.Thread(target=self.client_connection, args=(client, address)).start()
         except Exception as e:
@@ -53,7 +53,7 @@ class Controller:
                     break
                 time.sleep(3)
         except Exception as ex:
-            print(f"Error handling client {address}: {ex}")
+            print(f"Error handling connection {address}: {ex}")
         finally:
             self.close_client(client, address)
 
@@ -61,16 +61,15 @@ class Controller:
         try:
             auth: bytes = client.recv(1024)
             data_decoded: str = auth.decode("utf-8")
-            data_auth: DataNode = json.loads(data_decoded)
-            print(data_auth)
-            self.add_node(data_auth)
+            data_auth: dict = json.loads(data_decoded)
+            self.add_node(DataNode.from_json(data_auth))
 
             while True:
                 data: bytes = client.recv(1024)
                 if not data:
                     break
                 data_decoded: str = data.decode("utf-8")
-                data_message: DataMessage = json.loads(data_decoded)
+                data_message: dict = json.loads(data_decoded)
                 print(f"Request received from {address}: {data_message}")
 
         except Exception as ex:
@@ -90,12 +89,10 @@ class Controller:
         print(f"Connection closed with {address}")
 
     def add_node(self, node: DataNode) -> None:
-        self.network.add_node(node.name, node.ip, node.port)
-        pass
+        self.network.add_node(node)
 
     def close_node(self, node: DataNode) -> None:
-        self.network.remove_node(node.name)
-        pass
+        self.network.remove_node(node)
 
     def stop(self) -> None:
         self.server_socket.close()
