@@ -1,4 +1,3 @@
-from socket import socket as Socket
 import socket
 import threading
 from typing import Dict, Tuple
@@ -14,9 +13,9 @@ class Router:
 
         # Socket configuration and clients
         self.routes: Dict[str, Tuple[str, int]] = {}
-        self.client_socket: Socket = Socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket: Socket = Socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clients: Dict[Tuple[str, int], Socket] = {}
+        self.client_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clients: Dict[Tuple[str, int], socket.socket] = {}
 
     def connect_to_controller(self) -> None:
         try:
@@ -45,7 +44,7 @@ class Router:
             self.clients[address] = client
             threading.Thread(target=self.handle_client, args=(client, address), daemon=True).start()
 
-    def handle_client(self, client: Socket, address: Tuple[str, int]):
+    def handle_client(self, client: socket.socket, address: Tuple[str, int]):
         try:
             # TODO: Process client requests here
             data = client.recv(1024)

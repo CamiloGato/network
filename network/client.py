@@ -1,4 +1,3 @@
-from socket import socket as Socket
 import socket
 import json
 
@@ -10,7 +9,7 @@ class Client:
         # Client network configuration
         self.router_host: str = router_host
         self.router_port: int = router_port
-        self.client: Socket = Socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def connect(self) -> None:
         try:

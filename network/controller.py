@@ -2,10 +2,9 @@ import json
 import socket
 import threading
 import time
-from socket import socket as Socket
 from typing import Dict, Tuple
 
-from network.common.data import DataMessage, DataNode
+from network.common.data import DataNode
 from network.common.network import Network
 from network.common.tcp_functions import check_connection
 
@@ -18,8 +17,8 @@ class Controller:
         self.network: Network = network
 
         # Socket configuration & clients
-        self.server_socket: Socket = Socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clients: Dict[Socket, Tuple[str, int]] = {}
+        self.server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clients: Dict[socket.socket, Tuple[str, int]] = {}
         self.lock = threading.Lock()
 
     def start(self) -> None:
@@ -45,7 +44,7 @@ class Controller:
         except Exception as e:
             print(f"Error accepting connections: {e}")
 
-    def client_connection(self, client: Socket, address: Tuple[str, int]) -> None:
+    def client_connection(self, client: socket.socket, address: Tuple[str, int]) -> None:
         try:
             while True:
                 if not check_connection(client):
@@ -57,7 +56,7 @@ class Controller:
         finally:
             self.close_client(client, address)
 
-    def handle_client(self, client: Socket, address: Tuple[str, int]) -> None:
+    def handle_client(self, client: socket.socket, address: Tuple[str, int]) -> None:
         try:
             auth: bytes = client.recv(1024)
             data_decoded: str = auth.decode("utf-8")
@@ -75,13 +74,13 @@ class Controller:
         except Exception as ex:
             print(f"Error handling client {address}: {ex}")
 
-    # def send_routes(self, client: Socket, address: Tuple[str, int]) -> None:
+    # def send_routes(self, client: socket.socket, address: Tuple[str, int]) -> None:
     #     routes: List[DataRoute] = self.network.get_routes_for()
     #
     #     client.sendall(routes.encode('utf-8'))
     #     pass
 
-    def close_client(self, client: Socket, address: Tuple[str, int]) -> None:
+    def close_client(self, client: socket.socket, address: Tuple[str, int]) -> None:
         with self.lock:
             if client in self.clients.keys():
                 client.close()
