@@ -29,6 +29,8 @@ class Router:
         self.client_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients: Dict[socket.socket, Tuple[str, int]] = {}
+
+        # Threading Lock
         self.lock = threading.Lock()
 
     def connect_to_controller(self) -> None:
