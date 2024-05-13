@@ -29,6 +29,7 @@ class Router:
         self.client_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients: Dict[socket.socket, Tuple[str, int]] = {}
+        self.lock = threading.Lock()
 
     def connect_to_controller(self) -> None:
         try:
@@ -51,13 +52,14 @@ class Router:
             print(f"Failed to connect to controller: {ex}")
 
     def start_server(self) -> None:
-        self.server_socket.bind(('', self.local_port))
+        self.server_socket.bind((self.local_host, self.local_port))
         self.server_socket.listen(5)
         print("Router server started. Waiting for connections...")
         while True:
             client, address = self.server_socket.accept()
             print(f"Connection established with {address}")
-            self.clients[client] = address
+            with self.lock:
+                self.clients[client] = address
             threading.Thread(target=self.handle_client, args=(client, address)).start()
 
     def handle_client(self, client: socket.socket, address: Tuple[str, int]):
@@ -70,12 +72,14 @@ class Router:
             print(f"Error handling client {address}: {ex}")
         finally:
             client.close()
-            if client in self.clients:
-                del self.clients[client]
+            with self.lock:
+                if client in self.clients:
+                    del self.clients[client]
 
     def stop(self) -> None:
-        for client in self.clients.keys():
-            client.close()
-        self.server_socket.close()
-        self.clients.clear()
+        with self.lock:
+            for client in self.clients.keys():
+                client.close()
+            self.server_socket.close()
+            self.clients.clear()
         print("Router stopped.")
