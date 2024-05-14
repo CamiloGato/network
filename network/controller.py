@@ -30,7 +30,7 @@ class Controller:
         # Threading Lock
         self.lock = threading.Lock()
 
-    def start(self) -> None:
+    def start_server(self) -> None:
         try:
             # Start the binding and socket server.
             self.server_socket.bind((self.host, self.port))
@@ -46,12 +46,14 @@ class Controller:
     def accept_connections(self) -> None:
         try:
             while True:
+                # Accept connections
                 client, address = self.server_socket.accept()
                 auth: bytes = client.recv(1024)
                 data_decoded: str = auth.decode("utf-8")
-                data_auth: dict = json.loads(data_decoded)
+                data_auth: Dict = json.loads(data_decoded)
                 node: DataNode = DataNode.from_json(data_auth)
                 self.add_node(node)
+                # self.send_routes(node)
 
                 with self.lock:
                     self.clients[node] = client
@@ -82,7 +84,7 @@ class Controller:
                 if not data:
                     break
                 data_decoded: str = data.decode("utf-8")
-                data_message: dict = json.loads(data_decoded)
+                data_message: Dict = json.loads(data_decoded)
 
                 debug_log(self.NAME, f"{node.name} sends: {data_message}")
 
@@ -91,7 +93,7 @@ class Controller:
 
     def send_routes(self, node: DataNode) -> None:
         routes: List[DataRoute] = self.network.get_routes_for(node.name)
-        routes_json: str = json.dumps(routes.__dict__)
+        routes_json: str = json.dumps(routes.__dict__())
         client: socket.socket = self.clients[node]
         client.sendall(routes_json.encode('utf-8'))
         pass
@@ -101,7 +103,7 @@ class Controller:
             if client in self.clients.values():
                 client.close()
                 del self.clients[node]
-        debug_warning(self.NAME, f"Connection closed with {node}")
+        debug_warning(self.NAME, f"Connection closed with {node.name}")
 
     def add_node(self, node: DataNode) -> None:
         self.network.add_node(node)
@@ -115,4 +117,4 @@ class Controller:
             for client in self.clients.values():
                 client.close()
             self.clients.clear()
-        debug_warning(self.NAME, "Controller stopped.")
+        debug_warning(self.NAME, "Controller Stopped.")

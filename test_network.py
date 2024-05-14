@@ -7,24 +7,28 @@ from network.controller import Controller
 from network.router import Router
 
 threads = []
-
-controller_host = "localhost"
-controller_port = 8888
-
-network = Network()
+routers = []
 
 
-def create_router(name, host, port):
-    router = Router(controller_host, controller_port, host, port, name)
+def create_controller(host: str, port: int, network: Network) -> Controller:
+    controller = Controller(host, port, network)
+    controller.start_server()
+    return controller
+
+
+def create_router(name: str, host: str, port: int, controller: Controller):
+    router = Router(controller.host, controller.port, host, port, name)
     router.connect_to_controller()
+    router.start_server()
+    routers.append(router)
 
 
 def main():
-    # Crear una red
+    network = Network()
 
-    # Agregar nodos con su respectiva dirección IP y puerto (ejemplo genérico)
+    # Creation of Nodes
     nodes = {
-        "WA": ("localhost", 8080),
+        "WA": ("localhost", 8094),
         "MI": ("localhost", 8081),
         "NY": ("localhost", 8082),
         "CA1": ("localhost", 8083),
@@ -40,6 +44,7 @@ def main():
         "GA": ("localhost", 8093),
     }
 
+    # Creation of Edges
     edges = [
         ("WA", "CA1", 2100),
         ("WA", "CA2", 3000),
@@ -65,17 +70,17 @@ def main():
         ("DC", "NJ", 300),
     ]
 
-    controller = Controller(
+    # Create Controller
+    controller = create_controller(
         "localhost",
-        8888,
+        8080,
         network
     )
-    controller.start()
 
     time.sleep(3)
 
     for node, (host, port) in nodes.items():
-        thread = threading.Thread(target=create_router, args=(node, host, port))
+        thread = threading.Thread(target=create_router, args=(node, host, port, controller))
         threads.append(thread)
         thread.start()
         time.sleep(1)
@@ -83,14 +88,19 @@ def main():
     for (u, v, w) in edges:
         network.add_edge(u, v, w)
 
-    # Guardar las rutas en un archivo JSON
+    # Store the routes
     routes = network.get_routes_all()
     with open("routes/routes.json", "w") as f:
         json.dump([route.__dict__() for route in routes], f, indent=4)
     print("Routes saved successfully.")
 
-    input("Escribe para detente ejecución")
+    input("End Execution")
     controller.stop()
+    for router in routers:
+        router.stop()
+
+    for thread in threads:
+        thread.join()
 
 
 if __name__ == "__main__":

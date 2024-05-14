@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 
 class DataNode:
@@ -21,7 +21,7 @@ class DataNode:
                 )
 
     @classmethod
-    def from_json(cls, json_data):
+    def from_json(cls, json_data: Dict):
         return cls(json_data['name'], json_data['ip'], json_data['port'])
 
 
@@ -43,6 +43,10 @@ class DataRoute:
                 f"Destination: {self.destination.__str__()} | "
                 f"Path: {self.paths.__str__()}"
                 )
+
+    @classmethod
+    def from_json(cls, json_data: Dict):
+        pass
 
 
 class DataMessage:
@@ -66,3 +70,7 @@ class DataMessage:
                 f"Message: {self.message} | "
                 f"Path: {self.path.__str__()}"
                 )
+
+    @classmethod
+    def from_json(cls, json_data: Dict):
+        pass
