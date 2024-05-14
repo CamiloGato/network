@@ -22,7 +22,8 @@ class Network:
         self.graph.add_node(
             node.name,
             ip=node.ip,
-            port=node.port
+            port=node.port,
+            public_key=node.public_key
         )
 
     def remove_node(self, node: DataNode) -> None:
@@ -53,7 +54,8 @@ class Network:
         return DataNode(
             name=node,
             ip=node_data.get("ip"),
-            port=node_data.get("port")
+            port=node_data.get("port"),
+            public_key=node_data.get('public_key')
         )
 
     def _generate_data_route(self, source: str, target: str, path: List[str]) -> DataRoute:

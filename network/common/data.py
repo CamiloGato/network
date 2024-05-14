@@ -12,21 +12,23 @@ ROOT_DIR: str = (
 
 
 class DataNode:
-    def __init__(self, name: str, ip: str, port: int):
+    def __init__(self, name: str, ip: str, port: int, public_key: str = ""):
         self.name: str = name
         self.ip: str = ip
         self.port: int = port
+        self.public_key: str = public_key
 
     def __dict__(self):
         return {
             "name": self.name,
             "ip": self.ip,
-            "port": self.port
+            "port": self.port,
+            "public_key": self.public_key,
         }
 
     @classmethod
     def from_json(cls, json_data: Dict):
-        return cls(json_data['name'], json_data['ip'], json_data['port'])
+        return cls(json_data['name'], json_data['ip'], json_data['port'], json_data['public_key'])
 
 
 class DataRoute:
@@ -39,7 +41,7 @@ class DataRoute:
         return {
             "source": self.source.__dict__(),
             "destination": self.destination.__dict__(),
-            "path": [path.__dict__() for path in self.paths]
+            "path": [DataNode(node.name, node.ip, node.port).__dict__() for node in self.paths]
         }
 
     @classmethod
@@ -67,29 +69,50 @@ class NodeRoutes:
         routes: List[DataRoute] = [DataRoute.from_json(data) for data in json_data['routes']]
         return cls(node, routes)
 
+    @classmethod
+    def default(cls):
+        default_node: DataNode = DataNode("Default", "None", 0, "None")
+        default_routes: List[DataRoute] = []
+        return cls(default_node, default_routes)
+
 
 class DataMessage:
-    def __init__(self, destination_ip: str, destination_port: int, message: str, path: List[DataNode]):
-        self.destination_ip: str = destination_ip
-        self.destination_port: int = destination_port
+    def __init__(self, message: str, path: List[DataNode], key: str = ""):
         self.message: str = message
         self.path: List[DataNode] = path
+        self.key: str = key
 
     def __dict__(self):
         return {
-            "destination_ip": self.destination_ip,
-            "destination_port": self.destination_port,
             "message": self.message,
-            "path": [path.__dict__() for path in self.path]
+            "path": [path.__dict__() for path in self.path],
+            "key": self.key
         }
+
+    def is_current_node(self, node: str) -> bool:
+        current_node: DataNode = self.path.pop(0)
+        return current_node.name == node
+
+    def is_destine(self, node: str) -> bool:
+        return self.path[-1] == node
+
+    def get_current_node(self) -> DataNode:
+        return self.path[0]
+
+    @classmethod
+    def is_message(cls, message: str) -> bool:
+        try:
+            message_json: Dict = json.loads(message)
+            DataMessage.from_json(message_json)
+            return True
+        except Exception:
+            return False
 
     @classmethod
     def from_json(cls, json_data: Dict):
-        destination_ip: str = json_data['destination_ip']
-        destination_port: int = json_data['destination_port']
         message: str = json_data['message']
         path: List[DataNode] = [DataNode.from_json(data) for data in json_data['path']]
-        return cls(destination_ip, destination_port, message, path)
+        return cls(message, path)
 
 
 def store_route(name: str, routes: NodeRoutes):

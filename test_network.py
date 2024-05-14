@@ -73,7 +73,7 @@ def main():
     # Create Controller
     controller = create_controller(
         "localhost",
-        8080,
+        8079,
         network
     )
 
@@ -94,6 +94,7 @@ def main():
         json.dump([route.__dict__() for route in routes], f, indent=4)
 
     print("Routes saved successfully.")
+    time.sleep(3)
     controller.update_routes()
     print("Updated Routes")
 
