@@ -73,7 +73,7 @@ def main():
     # Create Controller
     controller = create_controller(
         "localhost",
-        8080,
+        8079,
         network)
 
     time.sleep(3)

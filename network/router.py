@@ -8,7 +8,7 @@ from network.common.security import generate_symmetric_key, encrypt_message, gen
     encrypt_symmetric_key, decrypt_symmetric_key, decrypt_message
 from network.common.utils import debug_log, debug_warning, debug_exception
 
-BUFFER_SIZE = 655360
+BUFFER_SIZE = 1024 * 1024
 
 
 class Router:
@@ -70,10 +70,12 @@ class Router:
         try:
             while True:
                 routes: bytes = self.controller_socket.recv(BUFFER_SIZE)
-                routes_decoded: str = routes.decode('utf-8')
-                routes_json: Dict = json.loads(routes_decoded)
-                self.routes = NodeRoutes.from_json(routes_json)
-                store_route(self.name, self.routes)
+                if routes:
+                    routes_decoded: str = routes.decode('utf-8')
+                    routes_json: Dict = json.loads(routes_decoded)
+                    self.routes = NodeRoutes.from_json(routes_json)
+                    store_route(self.name, self.routes)
+                    debug_log(self.NAME, f"Received and saved routes for {self.name}.")
         except Exception as ex:
             debug_exception(self.NAME, f"Error Checking Routes: {ex}")
 

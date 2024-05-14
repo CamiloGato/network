@@ -9,7 +9,7 @@ from network.common.network import Network
 from network.common.tcp_functions import check_connection
 from network.common.utils import debug_log, debug_exception, debug_warning
 
-BUFFER_SIZE = 655360
+BUFFER_SIZE = 1024 * 1024
 
 
 class Controller:
@@ -94,15 +94,18 @@ class Controller:
             debug_exception(self.NAME, f"Error handling client {node.name}: {ex}")
 
     def send_routes(self, node: DataNode) -> None:
-        routes: NodeRoutes = self.network.get_routes_for(node.name)
-        routes_json: str = json.dumps(routes.__dict__())
-        client: socket.socket = self.clients[node]
-        client.sendall(routes_json.encode('utf-8'))
+        try:
+            routes: NodeRoutes = self.network.get_routes_for(node.name)
+            routes_json: str = json.dumps(routes.__dict__())
+            client: socket.socket = self.clients[node]
+            client.sendall(routes_json.encode('utf-8'))
+            debug_log(self.NAME, f"Sent updated routes to {node.name}.")
+        except Exception as ex:
+            debug_exception(self.NAME, f"Failed to send routes to {node.name}: {ex}")
 
     def update_routes(self):
         for node in self.clients.keys():
             self.send_routes(node)
-            time.sleep(0.5)
 
     def close_client(self, client: socket.socket, node: DataNode) -> None:
         with self.lock:
