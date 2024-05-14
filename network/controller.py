@@ -102,7 +102,7 @@ class Controller:
     def update_routes(self):
         for node in self.clients.keys():
             self.send_routes(node)
-            time.sleep(1)
+            time.sleep(0.5)
 
     def close_client(self, client: socket.socket, node: DataNode) -> None:
         with self.lock:
