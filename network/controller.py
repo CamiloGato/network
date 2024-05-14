@@ -29,6 +29,7 @@ class Controller:
 
         # Threading Lock
         self.lock = threading.Lock()
+        self.closed = False
 
     def start_server(self) -> None:
         try:
@@ -45,7 +46,7 @@ class Controller:
 
     def accept_connections(self) -> None:
         try:
-            while True:
+            while not self.closed:
                 # Accept connections
                 client, address = self.server_socket.accept()
                 auth: bytes = client.recv(1024)
@@ -93,7 +94,7 @@ class Controller:
 
     def send_routes(self, node: DataNode) -> None:
         routes: List[DataRoute] = self.network.get_routes_for(node.name)
-        routes_json: str = json.dumps(routes.__dict__())
+        routes_json: str = json.dumps(routes)
         client: socket.socket = self.clients[node]
         client.sendall(routes_json.encode('utf-8'))
         pass
@@ -112,9 +113,10 @@ class Controller:
         self.network.remove_node(node)
 
     def stop(self) -> None:
+        self.closed = True
         self.server_socket.close()
         with self.lock:
             for client in self.clients.values():
                 client.close()
             self.clients.clear()
-        debug_warning(self.NAME, "Controller Stopped.")
+            debug_warning(self.NAME, "Controller Stopped.")

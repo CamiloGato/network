@@ -9,7 +9,7 @@ def main():
         8888,
         network
     )
-    controller.start()
+    controller.start_server()
 
 
 if __name__ == "__main__":

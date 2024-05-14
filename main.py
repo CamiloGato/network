@@ -4,7 +4,7 @@ from tkinter import filedialog
 
 def open_audio_file_dialog():
     root = tk.Tk()
-    root.withdraw()  # Ocultar la ventana principal de tkinter
+    root.withdraw()  # Hide window
 
     file_path = filedialog.askopenfilename(
         title="Seleccionar archivo de audio",
@@ -13,7 +13,6 @@ def open_audio_file_dialog():
 
     if file_path:
         print("Archivo de audio seleccionado:", file_path)
-        # Aquí puedes realizar cualquier operación con el archivo de audio seleccionado
 
 
 if __name__ == "__main__":
