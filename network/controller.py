@@ -9,7 +9,7 @@ from network.common.network import Network
 from network.common.tcp_functions import check_connection
 from network.common.utils import debug_log, debug_exception, debug_warning
 
-BUFFER_SIZE = 327680
+BUFFER_SIZE = 655360
 
 
 class Controller:
@@ -100,9 +100,9 @@ class Controller:
         client.sendall(routes_json.encode('utf-8'))
 
     def update_routes(self):
-        with self.lock:
-            for node in self.clients.keys():
-                self.send_routes(node)
+        for node in self.clients.keys():
+            self.send_routes(node)
+            time.sleep(1)
 
     def close_client(self, client: socket.socket, node: DataNode) -> None:
         with self.lock:
@@ -117,6 +117,14 @@ class Controller:
 
     def close_node(self, node: DataNode) -> None:
         self.network.remove_node(node)
+        self.update_routes()
+
+    def add_edge(self, u, v, w):
+        self.network.add_edge(u, v, w)
+
+    def add_all_edges(self, edges):
+        for (u, v, w) in edges:
+            self.network.add_edge(u, v, w)
 
     def stop(self) -> None:
         self.server_socket.close()

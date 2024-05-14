@@ -1,7 +1,6 @@
 import json
 import threading
 import time
-from random import randint
 
 from network.common.network import Network
 from network.controller import Controller
@@ -18,7 +17,6 @@ def create_controller(host: str, port: int, network: Network) -> Controller:
 
 
 def create_router(name: str, host: str, port: int, controller: Controller):
-
     router = Router(controller.host, controller.port, host, port, name)
     router.connect_to_controller()
     router.start_server()
@@ -76,8 +74,7 @@ def main():
     controller = create_controller(
         "localhost",
         8080,
-        network
-    )
+        network)
 
     time.sleep(3)
 
@@ -87,31 +84,29 @@ def main():
         thread.start()
         time.sleep(1)
 
+    for thread in threads:
+        thread.join()
+
+    # Añadir los edges y actualizar las rutas después de que todos los routers se hayan conectado
     for (u, v, w) in edges:
         network.add_edge(u, v, w)
+
+    controller.update_routes()
+
+    print("Routes saved successfully.")
 
     # Store the routes
     routes = network.get_routes_all()
     with open("routes/routes.json", "w") as f:
         json.dump([route.__dict__() for route in routes], f, indent=4)
 
-    print("Routes saved successfully.")
-    controller.update_routes()
     print("Updated Routes")
 
     input("End Execution: ")
     controller.stop()
-    random_origin = randint(0, len(routers) - 1)
-    random_target = randint(0, len(routers) - 1)
-    router_origin: Router = routers[random_origin]
-    router_target: Router = routers[random_target]
-    router_origin.send_message(router_target.name, "Diosmio Que es esta cosa tan loca pordios")
 
     for router in routers:
         router.stop()
-
-    for thread in threads:
-        thread.join()
 
 
 if __name__ == "__main__":
