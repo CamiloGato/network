@@ -110,7 +110,7 @@ class Controller:
                 client.close()
                 del self.clients[node]
                 self.close_node(node)
-        debug_warning(self.NAME, f"Connection closed with {node.name}")
+            debug_warning(self.NAME, f"Connection closed with {node.name}")
 
     def add_node(self, node: DataNode) -> None:
         self.network.add_node(node)
