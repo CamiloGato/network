@@ -31,7 +31,6 @@ class Controller:
 
         # Threading Lock
         self.lock = threading.Lock()
-        self.closed = False
 
     def start_server(self) -> None:
         try:
@@ -48,7 +47,7 @@ class Controller:
 
     def accept_connections(self) -> None:
         try:
-            while not self.closed:
+            while True:
                 # Accept connections
                 client, address = self.server_socket.accept()
                 auth: bytes = client.recv(BUFFER_SIZE)
@@ -109,6 +108,7 @@ class Controller:
             if client in self.clients.values():
                 client.close()
                 del self.clients[node]
+                self.close_node(node)
         debug_warning(self.NAME, f"Connection closed with {node.name}")
 
     def add_node(self, node: DataNode) -> None:
@@ -118,7 +118,6 @@ class Controller:
         self.network.remove_node(node)
 
     def stop(self) -> None:
-        self.closed = True
         self.server_socket.close()
         with self.lock:
             for client in self.clients.values():

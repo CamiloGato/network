@@ -37,7 +37,6 @@ class Router:
 
         # Threading Lock
         self.lock = threading.Lock()
-        self.closed = False
 
         # Routes
         self.routes: NodeRoutes
@@ -78,7 +77,7 @@ class Router:
         self.server_socket.bind((self.local_host, self.local_port))
         self.server_socket.listen(5)
         debug_log(self.NAME, "Router Server Started")
-        while not self.closed:
+        while True:
             client, address = self.server_socket.accept()
             debug_log(self.NAME, f"Connection established with {address}")
             with self.lock:
@@ -106,7 +105,6 @@ class Router:
                       f"Connection closed with {address}")
 
     def stop(self) -> None:
-        self.closed = True
         self.server_socket.close()
         with self.lock:
             for client in self.clients.values():
