@@ -7,7 +7,7 @@ from network.controller import Controller
 from network.router import Router
 
 threads = []
-routers = []
+routers: list[Router] = []
 
 
 def create_controller(host: str, port: int, network: Network) -> Controller:
@@ -92,9 +92,12 @@ def main():
     routes = network.get_routes_all()
     with open("routes/routes.json", "w") as f:
         json.dump([route.__dict__() for route in routes], f, indent=4)
-    print("Routes saved successfully.")
 
-    input("End Execution")
+    print("Routes saved successfully.")
+    controller.update_routes()
+    print("Updated Routes")
+
+    input("End Execution: ")
     controller.stop()
     for router in routers:
         router.stop()

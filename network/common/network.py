@@ -1,17 +1,7 @@
-import os
 from typing import List
 from networkx import Graph, dijkstra_path, NetworkXNoPath
 
-from network.common.data import DataRoute, DataNode
-import json
-
-ROOT_DIR: str = (
-    os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(__file__)
-        )
-    )
-)
+from network.common.data import DataRoute, DataNode, NodeRoutes
 
 
 class Network:
@@ -80,43 +70,24 @@ class Network:
 
         return route_data
 
-    def get_routes_all(self) -> List[DataRoute]:
+    def get_routes_all(self) -> List[NodeRoutes]:
         """ Calculate all possible routes between all pairs of nodes. """
-        all_routes: List[DataRoute] = []
+        all_routes = []
         for source in self.graph.nodes():
-            data: List[DataRoute] = self.get_routes_for(source)
-            for route in data:
-                all_routes.append(route)
+            data: NodeRoutes = self.get_routes_for(source)
+            all_routes.append(data)
 
         return all_routes
 
-    def get_routes_for(self, node: str) -> List[DataRoute]:
-        all_routes: List[DataRoute] = []
-
+    def get_routes_for(self, node: str) -> NodeRoutes:
+        all_routes = []
+        data_node: DataNode = self.node_to_datanode(node)
         for target in self.graph.nodes():
             if node != target:
                 path: List[str] = self.shortest_path(node, target)
                 route_data: DataRoute = self._generate_data_route(node, target, path)
+
                 all_routes.append(route_data)
 
-        return all_routes
-
-    def store_route_for(self, node: str):
-        routes: List[DataRoute] = self.get_routes_for(node)
-        filename: str = f"routes_{node}.json"
-        file_path: str = os.path.join(ROOT_DIR, "routes", filename)
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, "w") as f:
-            json.dump([route.__dict__() for route in routes], f, indent=4)
-
-    def remove_route_for(self, node: str):
-        filename: str = f"routes_{node}.json"
-        file_path = os.path.join(ROOT_DIR, "routes", filename)
-
-        try:
-            os.remove(file_path)
-            print(f"Archivo '{filename}' eliminado exitosamente.")
-        except FileNotFoundError:
-            print(f"El archivo '{filename}' no existe.")
-        except Exception as e:
-            print(f"Error al eliminar el archivo '{filename}': {e}")
+        node_routes: NodeRoutes = NodeRoutes(data_node, all_routes)
+        return node_routes

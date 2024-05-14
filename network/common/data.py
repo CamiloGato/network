@@ -1,4 +1,14 @@
+import json
+import os
 from typing import List, Dict
+
+ROOT_DIR: str = (
+    os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(__file__)
+        )
+    )
+)
 
 
 class DataNode:
@@ -13,12 +23,6 @@ class DataNode:
             "ip": self.ip,
             "port": self.port
         }
-
-    def __str__(self) -> str:
-        return (f"Node: {self.name} | "
-                f"Ip: {self.ip} | "
-                f"Port: {self.port}"
-                )
 
     @classmethod
     def from_json(cls, json_data: Dict):
@@ -38,15 +42,30 @@ class DataRoute:
             "path": [path.__dict__() for path in self.paths]
         }
 
-    def __str__(self) -> str:
-        return (f"Route: Source: {self.source.__str__()} | "
-                f"Destination: {self.destination.__str__()} | "
-                f"Path: {self.paths.__str__()}"
-                )
+    @classmethod
+    def from_json(cls, json_data: Dict):
+        source: DataNode = DataNode.from_json(json_data['source'])
+        destination: DataNode = DataNode.from_json(json_data['destination'])
+        path: List[DataNode] = [DataNode.from_json(data) for data in json_data['path']]
+        return cls(source, destination, path)
+
+
+class NodeRoutes:
+    def __init__(self, node: DataNode, routes: List[DataRoute]):
+        self.node: DataNode = node
+        self.routes: List[DataRoute] = routes
+
+    def __dict__(self):
+        return {
+            "node": self.node.__dict__(),
+            "routes": [route.__dict__() for route in self.routes]
+        }
 
     @classmethod
     def from_json(cls, json_data: Dict):
-        pass
+        node: DataNode = DataNode.from_json(json_data['node'])
+        routes: List[DataRoute] = [DataRoute.from_json(data) for data in json_data['routes']]
+        return cls(node, routes)
 
 
 class DataMessage:
@@ -64,13 +83,18 @@ class DataMessage:
             "path": [path.__dict__() for path in self.path]
         }
 
-    def __str__(self) -> str:
-        return (f"Message: Destination_Ip: {self.destination_ip} | "
-                f"Destination_Port: {self.destination_port} | "
-                f"Message: {self.message} | "
-                f"Path: {self.path.__str__()}"
-                )
-
     @classmethod
     def from_json(cls, json_data: Dict):
-        pass
+        destination_ip: str = json_data['destination_ip']
+        destination_port: int = json_data['destination_port']
+        message: str = json_data['message']
+        path: List[DataNode] = [DataNode.from_json(data) for data in json_data['path']]
+        return cls(destination_ip, destination_port, message, path)
+
+
+def store_route(name: str, routes: NodeRoutes):
+    filename: str = f"routes_{name}.json"
+    file_path: str = os.path.join(ROOT_DIR, "routes", filename)
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "w") as f:
+        json.dump(routes.__dict__(), f, indent=4)

@@ -4,10 +4,12 @@ import threading
 import time
 from typing import Dict, List
 
-from network.common.data import DataNode, DataRoute
+from network.common.data import DataNode, DataRoute, NodeRoutes
 from network.common.network import Network
 from network.common.tcp_functions import check_connection
 from network.common.utils import debug_log, debug_exception, debug_warning
+
+BUFFER_SIZE = 8192
 
 
 class Controller:
@@ -49,15 +51,15 @@ class Controller:
             while not self.closed:
                 # Accept connections
                 client, address = self.server_socket.accept()
-                auth: bytes = client.recv(1024)
+                auth: bytes = client.recv(BUFFER_SIZE)
                 data_decoded: str = auth.decode("utf-8")
                 data_auth: Dict = json.loads(data_decoded)
                 node: DataNode = DataNode.from_json(data_auth)
-                self.add_node(node)
-                # self.send_routes(node)
 
                 with self.lock:
                     self.clients[node] = client
+
+                self.add_node(node)
 
                 debug_log(self.NAME, f"Connection established with {address}")
 
@@ -81,7 +83,7 @@ class Controller:
     def handle_client(self, client: socket.socket, node: DataNode) -> None:
         try:
             while True:
-                data: bytes = client.recv(1024)
+                data: bytes = client.recv(BUFFER_SIZE)
                 if not data:
                     break
                 data_decoded: str = data.decode("utf-8")
@@ -93,11 +95,14 @@ class Controller:
             debug_exception(self.NAME, f"Error handling client {node.name}: {ex}")
 
     def send_routes(self, node: DataNode) -> None:
-        routes: List[DataRoute] = self.network.get_routes_for(node.name)
-        routes_json: str = json.dumps(routes)
+        routes: NodeRoutes = self.network.get_routes_for(node.name)
+        routes_json: str = json.dumps(routes.__dict__())
         client: socket.socket = self.clients[node]
         client.sendall(routes_json.encode('utf-8'))
-        pass
+
+    def update_routes(self):
+        for node in self.clients.keys():
+            self.send_routes(node)
 
     def close_client(self, client: socket.socket, node: DataNode) -> None:
         with self.lock:

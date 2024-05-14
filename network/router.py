@@ -3,8 +3,10 @@ import threading
 from typing import Dict, Tuple, List
 import json
 
-from network.common.data import DataNode, DataRoute
+from network.common.data import DataNode, DataRoute, NodeRoutes, store_route
 from network.common.utils import debug_log, debug_warning, debug_exception
+
+BUFFER_SIZE = 8192
 
 
 class Router:
@@ -38,7 +40,7 @@ class Router:
         self.closed = False
 
         # Routes
-        self.routes: List[DataRoute]
+        self.routes: NodeRoutes
 
     def connect_to_controller(self) -> None:
         try:
@@ -55,9 +57,22 @@ class Router:
             json_message = json.dumps(message_auth.__dict__())
             self.client_socket.sendall(json_message.encode('utf-8'))
 
+            threading.Thread(target=self.routes_checker).start()
+
         except Exception as ex:
             debug_exception(self.NAME,
                             f"Failed to connect to controller: {ex}")
+
+    def routes_checker(self):
+        try:
+            while True:
+                routes: bytes = self.client_socket.recv(BUFFER_SIZE)
+                routes_decoded: str = routes.decode('utf-8')
+                routes_json: Dict = json.loads(routes_decoded)
+                self.routes = NodeRoutes.from_json(routes_json)
+                store_route(self.name, self.routes)
+        except Exception as ex:
+            debug_exception(self.NAME, f"Error Checking Routes: {ex}")
 
     def start_server(self) -> None:
         self.server_socket.bind((self.local_host, self.local_port))
@@ -73,7 +88,7 @@ class Router:
 
     def handle_client(self, client: socket.socket, address: Tuple[str, int]):
         try:
-            data = client.recv(1024)
+            data = client.recv(BUFFER_SIZE)
             if data:
                 client.sendall(data)
         except Exception as ex:
