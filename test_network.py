@@ -1,6 +1,7 @@
 import json
 import threading
 import time
+from random import randint
 
 from network.common.network import Network
 from network.controller import Controller
@@ -17,6 +18,7 @@ def create_controller(host: str, port: int, network: Network) -> Controller:
 
 
 def create_router(name: str, host: str, port: int, controller: Controller):
+
     router = Router(controller.host, controller.port, host, port, name)
     router.connect_to_controller()
     router.start_server()
@@ -73,7 +75,7 @@ def main():
     # Create Controller
     controller = create_controller(
         "localhost",
-        8079,
+        8080,
         network
     )
 
@@ -94,12 +96,17 @@ def main():
         json.dump([route.__dict__() for route in routes], f, indent=4)
 
     print("Routes saved successfully.")
-    time.sleep(3)
     controller.update_routes()
     print("Updated Routes")
 
     input("End Execution: ")
     controller.stop()
+    random_origin = randint(0, len(routers) - 1)
+    random_target = randint(0, len(routers) - 1)
+    router_origin: Router = routers[random_origin]
+    router_target: Router = routers[random_target]
+    router_origin.send_message(router_target.name, "Diosmio Que es esta cosa tan loca pordios")
+
     for router in routers:
         router.stop()
 

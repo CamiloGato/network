@@ -39,7 +39,7 @@ class DataRoute:
 
     def __dict__(self):
         return {
-            "source": self.source.__dict__(),
+            "source": DataNode(self.source.name, self.source.ip, self.source.port).__dict__(),
             "destination": self.destination.__dict__(),
             "path": [DataNode(node.name, node.ip, node.port).__dict__() for node in self.paths]
         }
