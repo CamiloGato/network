@@ -2,9 +2,9 @@ import json
 import socket
 import threading
 import time
-from typing import Dict, List
+from typing import Dict
 
-from network.common.data import DataNode, DataRoute, NodeRoutes
+from network.common.data import DataNode, NodeRoutes
 from network.common.network import Network
 from network.common.tcp_functions import check_connection
 from network.common.utils import debug_log, debug_exception, debug_warning

@@ -30,7 +30,7 @@ class Router:
         # Routes
         self.routes: List[DataRoute] = []
 
-        # Socket client and server
+        # Socket client/server configuration and clients
         self.client_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients: Dict[Tuple[str, int], socket.socket] = {}
