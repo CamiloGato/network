@@ -67,17 +67,20 @@ class Router:
                             f"Failed to connect to controller: {ex}")
 
     def routes_checker(self):
-        try:
-            while True:
-                routes: bytes = self.controller_socket.recv(BUFFER_SIZE)
+        while True:
+            try:
+                routes = self.controller_socket.recv(BUFFER_SIZE)
                 if routes:
-                    routes_decoded: str = routes.decode('utf-8')
-                    routes_json: Dict = json.loads(routes_decoded)
+                    debug_warning(self.NAME, f"Route data received: {len(routes)} bytes")
+                    routes_decoded = routes.decode('utf-8')
+                    routes_json = json.loads(routes_decoded)
                     self.routes = NodeRoutes.from_json(routes_json)
                     store_route(self.name, self.routes)
-                    debug_log(self.NAME, f"Received and saved routes for {self.name}.")
-        except Exception as ex:
-            debug_exception(self.NAME, f"Error Checking Routes: {ex}")
+                    debug_log(self.NAME, f"Routes updated and stored for {self.name}.")
+                else:
+                    debug_warning(self.NAME, "Received empty route update.")
+            except Exception as ex:
+                debug_exception(self.NAME, f"Error processing received routes: {ex}")
 
     def send_message(self, destination: str, message: str):
         # Find route to destination

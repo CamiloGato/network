@@ -19,7 +19,6 @@ def create_controller(host: str, port: int, network: Network) -> Controller:
 def create_router(name: str, host: str, port: int, controller: Controller):
     router = Router(controller.host, controller.port, host, port, name)
     router.connect_to_controller()
-    router.start_server()
     routers.append(router)
 
 
@@ -73,7 +72,7 @@ def main():
     # Create Controller
     controller = create_controller(
         "localhost",
-        8079,
+        8080,
         network)
 
     time.sleep(3)
