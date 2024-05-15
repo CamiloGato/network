@@ -71,12 +71,10 @@ class Router:
             try:
                 routes = self.controller_socket.recv(BUFFER_SIZE)
                 if routes:
-                    debug_warning(self.NAME, f"Route data received: {len(routes)} bytes")
                     routes_decoded = routes.decode('utf-8')
                     routes_json = json.loads(routes_decoded)
                     self.routes = NodeRoutes.from_json(routes_json)
                     store_route(self.name, self.routes)
-                    debug_log(self.NAME, f"Routes updated and stored for {self.name}.")
                 else:
                     debug_warning(self.NAME, "Received empty route update.")
             except Exception as ex:

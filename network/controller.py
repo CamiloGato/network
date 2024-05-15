@@ -99,7 +99,6 @@ class Controller:
             routes_json: str = json.dumps(routes.__dict__())
             client: socket.socket = self.clients[node]
             client.sendall(routes_json.encode('utf-8'))
-            debug_log(self.NAME, f"Sent updated routes to {node.name}.")
         except Exception as ex:
             debug_exception(self.NAME, f"Failed to send routes to {node.name}: {ex}")
 
