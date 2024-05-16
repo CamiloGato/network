@@ -97,7 +97,7 @@ class Router:
                 debug_exception(self.NAME,
                                 f"Error processing received routes: {ex}")
 
-    def send_message(self, destination: str, message: str, is_file: bool, filedata: bytes = None):
+    def send_message(self, destination: str, message: str, is_file: bool = False, filedata: bytes = None):
         # Find route to destination
         route: DataRoute = read_route_for(self.name, destination)
         if not route:

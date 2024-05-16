@@ -130,7 +130,7 @@ def main():
     print("\n\nTest: Sending Messages from CA1 to NY")
 
     # Test sending a text message
-    ca1.send_message(ny.name, 'Hello, this is a text message!', is_file=False)
+    ca1.send_message(ny.name, 'Hello, this is a text message!')
 
     time.sleep(10)
     print("\n\nTest: Remove Node UT")
