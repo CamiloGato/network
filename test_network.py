@@ -109,32 +109,30 @@ def main():
     time.sleep(2)
     print("\n\nTest: Creation and SetUp of Routers Servers")
 
-    ca1: Router
-    ut: Router
-    mi: Router
-    ny: Router
+    ca1 = None
+    ny = None
 
     for router in routers:
         if router.name == "CA1":
             ca1 = router
             print("FOUND CA1")
+            ca1.start_server()
+            time.sleep(1)
         if router.name == "UT":
             ut = router
             print("FOUND UT")
+            ut.start_server()
+            time.sleep(1)
         if router.name == "MI":
             mi = router
             print("FOUND MI")
+            mi.start_server()
+            time.sleep(1)
         if router.name == "NY":
             ny = router
             print("FOUND NY")
-
-    ca1.start_server()
-    time.sleep(1)
-    ut.start_server()
-    time.sleep(1)
-    mi.start_server()
-    time.sleep(1)
-    ny.start_server()
+            ny.start_server()
+            time.sleep(1)
 
     time.sleep(2)
     print("\n\nTest: Sending Messages from CA1 to NY")
