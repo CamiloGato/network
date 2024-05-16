@@ -125,7 +125,15 @@ def main():
     ny.start_server()
     time.sleep(2)
 
+    # Test sending a text message
     ca1.send_message(ny.name, 'Hello, this is a text message!', is_file=False)
+
+    time.sleep(10)
+
+    # Test sending an audio file
+    with open('source/test_audio.wav', 'rb') as f:
+        filedata = f.read()
+    ca1.send_message(ny.name, 'Sending an audio file', is_file=True, filename='audiofile.wav', filedata=filedata)
 
     time.sleep(10)
     controller.stop()

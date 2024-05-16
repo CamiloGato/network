@@ -1,9 +1,11 @@
+import os
+import base64
 import json
 import socket
 import threading
 from typing import Dict, Tuple
 
-from network.common.data import DataNode, DataRoute, NodeRoutes, store_route, DataMessage, read_route_for
+from network.common.data import DataNode, DataRoute, NodeRoutes, store_route, DataMessage, read_route_for, ROOT_DIR
 from network.common.security import generate_symmetric_key, encrypt_message, generate_keys, serialize_key_public, \
     encrypt_symmetric_key, decrypt_symmetric_key, decrypt_message
 from network.common.utils import debug_log, debug_warning, debug_exception
@@ -86,6 +88,16 @@ class Router:
                           f"No route found to {destination}")
             return
 
+        # Read and encode the file if it's a file
+        if is_file:
+            if not os.path.exists(message):
+                debug_warning(self.NAME,
+                              f"File {message} does not exist")
+                return
+            with open(message, 'rb') as file:
+                message_data = file.read()
+                message = base64.b64encode(message_data).decode('utf-8')
+
         # Generate symmetric key and encrypt message
         sym_key = generate_symmetric_key()
         encrypted_message = encrypt_message(message, sym_key)
@@ -159,7 +171,7 @@ class Router:
 
                 message_decoded: str = data.decode('utf-8')
                 debug_log(self.NAME,
-                          f"Received message: {message_decoded[0:10]}")
+                          f"Received message: {message_decoded}")
 
                 if DataMessage.is_message(message_decoded):
                     message_json: Dict = json.loads(message_decoded)
@@ -176,6 +188,14 @@ class Router:
                             message = decrypt_message(enc_message, sym_key)
                             debug_log(self.NAME,
                                       f"Decrypted message: {message}")
+                            # Handle file message if it is a file
+                            if data_message.is_file:
+                                decoded_message = base64.b64decode(message)
+                                file_path = os.path.join(ROOT_DIR, "received", f"/received_file_{self.name}")
+                                with open(file_path, 'wb') as file:
+                                    file.write(decoded_message)
+                                    debug_log(self.NAME,
+                                              f"File saved as received_file_{self.name}")
                         else:
                             # Get the next node before popping the current node
                             next_node = data_message.path[1] if len(data_message.path) > 1 else None
