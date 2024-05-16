@@ -70,11 +70,7 @@ def main():
     ]
 
     # Create Controller
-    controller = create_controller(
-        "localhost",
-        8080,
-        network)
-
+    controller = create_controller("localhost", 8079, network)
     time.sleep(3)
 
     for node, (host, port) in nodes.items():
@@ -86,7 +82,7 @@ def main():
     for thread in threads:
         thread.join()
 
-    # Añadir los edges y actualizar las rutas después de que todos los routers se hayan conectado
+    # Add edges and update routes after all routers are connected
     for (u, v, w) in edges:
         network.add_edge(u, v, w)
 
@@ -109,16 +105,16 @@ def main():
     for router in routers:
         if router.name == "CA1":
             ca1 = router
-            print("FOUNDED CA1")
+            print("FOUND CA1")
         if router.name == "UT":
             ut = router
-            print("FOUNDED UT")
+            print("FOUND UT")
         if router.name == "MI":
             mi = router
-            print("FOUNDED MI")
+            print("FOUND MI")
         if router.name == "NY":
             ny = router
-            print("FOUNDED NY")
+            print("FOUND NY")
 
     ca1.start_server()
     time.sleep(1)
@@ -129,9 +125,9 @@ def main():
     ny.start_server()
     time.sleep(2)
 
-    ca1.send_message(ny.name, "KLK WAWAWA")
+    ca1.send_message(ny.name, 'Hello, this is a text message!', is_file=False)
 
-    input("End Execution: ")
+    time.sleep(10)
     controller.stop()
 
     for router in routers:

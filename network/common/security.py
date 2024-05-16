@@ -1,11 +1,48 @@
 import base64
-from os import urandom
+import os
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+
+def generate_symmetric_key() -> bytes:
+    return AESGCM.generate_key(bit_length=128)
+
+
+def encrypt_message(message: str, key: bytes) -> str:
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    encrypted = aesgcm.encrypt(nonce, message.encode('utf-8'), None)
+    return base64.b64encode(nonce + encrypted).decode('utf-8')
+
+
+def decrypt_message(encrypted_message: str, key: bytes) -> str:
+    encrypted_message = base64.b64decode(encrypted_message)
+    nonce = encrypted_message[:12]
+    ciphertext = encrypted_message[12:]
+    aesgcm = AESGCM(key)
+    decrypted = aesgcm.decrypt(nonce, ciphertext, None)
+    return decrypted.decode('utf-8')
+
+
+def encrypt_file(file_data: bytes, key: bytes) -> str:
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    encrypted = aesgcm.encrypt(nonce, file_data, None)
+    return base64.b64encode(nonce + encrypted).decode('utf-8')
+
+
+def decrypt_file(encrypted_file: str, key: bytes) -> bytes:
+    encrypted_file = base64.b64decode(encrypted_file)
+    nonce = encrypted_file[:12]
+    ciphertext = encrypted_file[12:]
+    aesgcm = AESGCM(key)
+    decrypted = aesgcm.decrypt(nonce, ciphertext, None)
+    return decrypted
 
 
 def generate_keys() -> (RSAPrivateKey, RSAPublicKey):
@@ -36,27 +73,6 @@ def serialize_key_public(key: RSAPublicKey) -> str:
 
 def deserialize_key_public(key_str: str) -> RSAPublicKey:
     return serialization.load_pem_public_key(key_str.encode('utf-8'), backend=default_backend())
-
-
-def generate_symmetric_key():
-    return urandom(32)
-
-
-def encrypt_message(message, key):
-    iv = urandom(16)
-    cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
-    encryptor = cipher.encryptor()
-    ct = encryptor.update(message.encode()) + encryptor.finalize()
-    return base64.b64encode(iv + ct).decode()
-
-
-def decrypt_message(enc_message, key):
-    enc_message = base64.b64decode(enc_message.encode())
-    iv = enc_message[:16]
-    ct = enc_message[16:]
-    cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
-    de_encryptor = cipher.decryptor()
-    return (de_encryptor.update(ct) + de_encryptor.finalize()).decode()
 
 
 def encrypt_symmetric_key(sym_key, public_key_str):

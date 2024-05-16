@@ -94,26 +94,25 @@ class NodeRoutes:
 
 
 class DataMessage:
-    def __init__(self, message: str, path: List[DataNode], key: str = ""):
+    def __init__(self, message: str, path: List[DataNode], key: str = "", is_file: bool = False):
         self.message: str = message
         self.path: List[DataNode] = path
         self.key: str = key
+        self.is_file: bool = is_file
 
     def __dict__(self):
         return {
             "message": self.message,
             "path": [path.__dict__() for path in self.path],
-            "key": self.key
+            "key": self.key,
+            "is_file": self.is_file
         }
 
-    def is_current_node(self, node_name: str) -> bool:
-        return self.path[0].name == node_name
+    def is_current_node(self, node: str) -> bool:
+        return self.path and self.path[0].name == node
 
-    def is_destine(self, node_name: str) -> bool:
-        return self.path[-1].name == node_name
-
-    def get_current_node(self) -> DataNode:
-        return self.path[0]
+    def is_destine(self, node: str) -> bool:
+        return self.path and self.path[-1].name == node
 
     @classmethod
     def is_message(cls, message: str) -> bool:
@@ -128,11 +127,13 @@ class DataMessage:
     def from_json(cls, json_data: Dict):
         message: str = json_data['message']
         path: List[DataNode] = [DataNode.from_json(data) for data in json_data['path']]
-        key: str = json_data.get('key', "")
+        key: str = json_data.get('key', '')
+        is_file: bool = json_data.get('is_file', False)
         return cls(
             message=message,
             path=path,
-            key=key
+            key=key,
+            is_file=is_file
         )
 
 
