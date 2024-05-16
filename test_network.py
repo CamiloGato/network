@@ -116,42 +116,39 @@ def main():
     for router in routers:
         if router.name == "CA1":
             ca1 = router
-            print("FOUND CA1")
         if router.name == "UT":
             ut = router
-            print("FOUND UT")
         if router.name == "NY":
             ny = router
-            print("FOUND NY")
         router.start_server()
         time.sleep(2)
 
-    time.sleep(2)
-    print("\n\nTest: Sending Messages from CA1 to NY")
-
-    # Test sending a text message
-    ca1.send_message(ny.name, 'Hello, this is a text message!')
-
-    time.sleep(10)
-    print("\n\nTest: Remove Node UT")
-
-    ut.stop()
-
-    time.sleep(10)
-    print("\n\nTest: Sending AUDIO FILES from CA1 to NY")
-
-    # Test sending an audio file
-    with open('source/test_audio.wav', 'rb') as f:
-        filedata = f.read()
-    ca1.send_message(ny.name, 'audio_new.wav', is_file=True, filedata=filedata)
-
-    time.sleep(10)
-    print("\n\nClose Connections")
-
-    controller.stop()
-
-    for router in routers:
-        router.stop()
+    # time.sleep(2)
+    # print("\n\nTest: Sending Messages from CA1 to NY")
+    #
+    # # Test sending a text message
+    # ca1.send_message(ny.name, 'Hello, this is a text message!')
+    #
+    # time.sleep(10)
+    # print("\n\nTest: Remove Node UT")
+    #
+    # ut.stop()
+    #
+    # time.sleep(10)
+    # print("\n\nTest: Sending AUDIO FILES from CA1 to NY")
+    #
+    # # Test sending an audio file
+    # with open('source/test_audio.wav', 'rb') as f:
+    #     filedata = f.read()
+    # ca1.send_message(ny.name, 'audio_new.wav', is_file=True, filedata=filedata)
+    #
+    # time.sleep(10)
+    # print("\n\nClose Connections")
+    #
+    # controller.stop()
+    #
+    # for router in routers:
+    #     router.stop()
 
 
 if __name__ == "__main__":

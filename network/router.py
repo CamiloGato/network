@@ -75,7 +75,12 @@ class Router:
     def send_heartbeat(self):
         while self.running.is_set():
             try:
-                self.controller_socket.sendall(json.dumps({"type": "ping", "name": self.name}).encode('utf-8'))
+                heartbeat_message = {
+                    "type": "ping",
+                    "name": self.name
+                }
+                heartbeat_json = json.dumps(heartbeat_message)
+                self.controller_socket.sendall(heartbeat_json.encode('utf-8'))
             except Exception as ex:
                 debug_exception(self.NAME, f"Error sending heartbeat: {ex}")
             time.sleep(5)  # Send a ping every 5 seconds
@@ -200,6 +205,32 @@ class Router:
             self.close_client(client_socket, address)
 
     def process_message(self, message_json: Dict):
+
+        if not DataMessage.is_message(message_json):
+            client_destination = message_json.get('destination')
+            if not client_destination:
+                return
+            client_message = message_json.get('message', "NONE")
+            client_is_file = message_json.get('is_file', False)
+            client_binary_encoded = message_json.get('binary', "")
+
+            if client_is_file:
+                try:
+                    client_binary = base64.b64decode(client_binary_encoded)
+                except Exception as e:
+                    print(f"Failed to decode binary data: {e}")
+                    return
+            else:
+                client_binary = bytes()
+
+            self.send_message(
+                destination=client_destination,
+                message=client_message,
+                is_file=client_is_file,
+                filedata=client_binary
+            )
+            return
+
         data_message: DataMessage = DataMessage.from_json(message_json)
 
         # Check if this router is the current node in the path
@@ -229,6 +260,14 @@ class Router:
                     file.write(decoded_message)
                     debug_log(self.NAME,
                               f"File saved as {file_path}")
+
+            for client in self.clients.values():
+                message_to_client = {
+                    'message': message
+                }
+                message_json = json.dumps(message_to_client)
+                client.sendall(message_json.encode('utf-8'))
+
         else:
             # Get the next node before popping the current node
             next_node: DataNode = data_message.path[1] if len(data_message.path) > 1 else None
@@ -257,7 +296,7 @@ class Router:
             next_node_client_socket.connect((next_node.ip, next_node.port))
             next_node_client_socket.sendall(json_message.encode('utf-8'))
             debug_log(self.NAME,
-                      f"Message SENT to {next_node.name}: {json_message}")
+                      f"Message SENT to {next_node.name}: {json_message[:15]}")
             next_node_client_socket.close()
         except Exception as ex:
             debug_exception(self.NAME,

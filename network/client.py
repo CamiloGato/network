@@ -1,5 +1,8 @@
+import base64
 import socket
 import json
+
+from network.common.data import DataMessage
 
 
 class Client:
@@ -21,29 +24,33 @@ class Client:
             if self.client:
                 self.client.close()
 
-    # def send_message(self, destination_ip: str, destination_port: int, message: str) -> None:
-    #     try:
-    #         data: DataMessage = DataMessage(
-    #             destination_ip,
-    #             destination_port,
-    #             message,
-    #             []
-    #         )
-    #
-    #         json_data = json.dumps(data)
-    #         self.client.sendall(json_data.encode('utf-8'))
-    #         print(f"Message sent to {destination_ip}:{destination_port} -> {message}")
-    #     except Exception as ex:
-    #         print(f"Failed to send message: {ex}")
+    def send_message(self, destination: str, message: str, is_file: bool = False, binary: bytes = bytes()) -> None:
+        try:
+            if is_file:
+                binary_data_encoded = base64.b64encode(binary).decode('utf-8')
+            else:
+                binary_data_encoded = ""
 
-    # def receive_message(self) -> DataMessage | None:
-    #     try:
-    #         data = self.client.recv(1024).decode('utf-8')
-    #         data_loaded: DataMessage = json.loads(data)
-    #         return data_loaded
-    #     except Exception as e:
-    #         print(f"Failed to receive message: {e}")
-    #         return None
+            client_message = {
+                'destination': destination,
+                'message': message,
+                'is_file': is_file,
+                'binary': binary_data_encoded
+            }
+
+            json_data = json.dumps(client_message)
+            self.client.sendall(json_data.encode('utf-8'))
+            print(f"Message sent to {destination} -> {message}")
+        except Exception as ex:
+            print(f"Failed to send message: {ex}")
+
+    def receive_message(self):
+        try:
+            data = self.client.recv(1024).decode('utf-8')
+            data_loaded = json.loads(data)
+            print(data_loaded)
+        except Exception as e:
+            print(f"Failed to receive message: {e}")
 
     def stop(self):
         if self.client:

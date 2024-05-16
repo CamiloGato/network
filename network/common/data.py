@@ -117,10 +117,9 @@ class DataMessage:
         return self.path and self.path[-1].name == node
 
     @classmethod
-    def is_message(cls, message: str) -> bool:
+    def is_message(cls, message: Dict) -> bool:
         try:
-            message_json: Dict = json.loads(message)
-            DataMessage.from_json(message_json)
+            DataMessage.from_json(message)
             return True
         except Exception:
             return False
