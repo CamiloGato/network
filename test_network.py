@@ -75,7 +75,9 @@ def main():
         8079,
         network
     )
+
     time.sleep(3)
+    print("\n\nTest: Creation of Routers and Edges")
 
     for node, (host, port) in nodes.items():
         thread = threading.Thread(target=create_router, args=(node, host, port, controller))
@@ -94,12 +96,18 @@ def main():
 
     print("Routes saved successfully.")
 
+    time.sleep(2)
+    print("\n\nTest: Creation of routes.json from Edges and Nodes")
+
     # Store the routes
     routes = network.get_routes_all()
     with open("routes/routes.json", "w") as f:
         json.dump([route.__dict__() for route in routes], f, indent=4)
 
     print("Updated Routes")
+
+    time.sleep(2)
+    print("\n\nTest: Creation and SetUp of Routers Servers")
 
     ca1: Router
     ut: Router
@@ -127,12 +135,15 @@ def main():
     mi.start_server()
     time.sleep(1)
     ny.start_server()
+
     time.sleep(2)
+    print("\n\nTest: Sending Messages from CA1 to NY")
 
     # Test sending a text message
     ca1.send_message(ny.name, 'Hello, this is a text message!', is_file=False)
 
     time.sleep(10)
+    print("\n\nTest: Sending AUDIO FILES from CA1 to NY")
 
     # Test sending an audio file
     with open('source/test_audio.wav', 'rb') as f:
@@ -140,6 +151,8 @@ def main():
     ca1.send_message(ny.name, 'audio_new.wav', is_file=True, filedata=filedata)
 
     time.sleep(10)
+    print("\n\nTest: Sending Messages from CA1 to NY")
+
     controller.stop()
 
     for router in routers:
