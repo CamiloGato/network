@@ -1,7 +1,6 @@
 import json
 import socket
 import threading
-import time
 from typing import Dict
 
 from network.common.data import DataNode, NodeRoutes
@@ -37,13 +36,15 @@ class Controller:
             # Start the binding and socket server.
             self.server_socket.bind((self.host, self.port))
             self.server_socket.listen(5)
-            debug_log(self.NAME, f"Controller started.")
+            debug_log(self.NAME,
+                      f"Controller started.")
 
             threading.Thread(target=self.accept_connections).start()
 
         except Exception as ex:
             self.server_socket.close()
-            debug_exception(self.NAME, f"Controller start error: {ex}")
+            debug_exception(self.NAME,
+                            f"Controller start error: {ex}")
 
     def accept_connections(self) -> None:
         try:
@@ -60,22 +61,25 @@ class Controller:
 
                 self.add_node(node)
 
-                debug_log(self.NAME, f"Connection established with {address}")
+                debug_log(self.NAME,
+                          f"Connection established with {address}")
 
                 threading.Thread(target=self.client_connection, args=(client, node)).start()
                 threading.Thread(target=self.handle_client, args=(client, node)).start()
         except Exception as e:
-            debug_exception(self.NAME, f"Error accepting connections: {e}")
+            debug_exception(self.NAME,
+                            f"Error accepting connections: {e}")
 
     def client_connection(self, client: socket.socket, node: DataNode) -> None:
         try:
             while True:
                 if not check_connection(client):
-                    debug_warning(self.NAME, f"Connection Lost - {node}")
+                    debug_warning(self.NAME,
+                                  f"Connection Lost - {node}")
                     break
-                time.sleep(10)
         except Exception as ex:
-            debug_exception(self.NAME, f"Error handling connection {node}: {ex}")
+            debug_exception(self.NAME,
+                            f"Error handling connection {node}: {ex}")
         finally:
             self.close_client(client, node)
 
@@ -88,10 +92,12 @@ class Controller:
                 data_decoded: str = data.decode("utf-8")
                 data_message: Dict = json.loads(data_decoded)
 
-                debug_log(self.NAME, f"{node.name} sends: {data_message}")
+                debug_log(self.NAME,
+                          f"{node.name} sends: {data_message}")
 
         except Exception as ex:
-            debug_exception(self.NAME, f"Error handling client {node.name}: {ex}")
+            debug_exception(self.NAME,
+                            f"Error handling client {node.name}: {ex}")
 
     def send_routes(self, node: DataNode) -> None:
         try:
@@ -100,7 +106,8 @@ class Controller:
             client: socket.socket = self.clients[node]
             client.sendall(routes_json.encode('utf-8'))
         except Exception as ex:
-            debug_exception(self.NAME, f"Failed to send routes to {node.name}: {ex}")
+            debug_exception(self.NAME,
+                            f"Failed to send routes to {node.name}: {ex}")
 
     def update_routes(self):
         for node in self.clients.keys():
@@ -112,7 +119,8 @@ class Controller:
                 client.close()
                 del self.clients[node]
                 self.close_node(node)
-            debug_warning(self.NAME, f"Connection closed with {node.name}")
+            debug_warning(self.NAME,
+                          f"Connection closed with {node.name}")
 
     def add_node(self, node: DataNode) -> None:
         self.network.add_node(node)
@@ -134,4 +142,5 @@ class Controller:
             for client in self.clients.values():
                 client.close()
             self.clients.clear()
-            debug_warning(self.NAME, "Controller Stopped.")
+            debug_warning(self.NAME,
+                          "Controller Stopped.")
