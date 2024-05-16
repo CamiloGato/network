@@ -151,7 +151,7 @@ def main():
     ca1.send_message(ny.name, 'audio_new.wav', is_file=True, filedata=filedata)
 
     time.sleep(10)
-    print("\n\nTest: Sending Messages from CA1 to NY")
+    print("\n\nClose Connections")
 
     controller.stop()
 
