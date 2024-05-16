@@ -8,7 +8,7 @@ from typing import Dict, Tuple
 
 from network.common.data import DataNode, DataRoute, NodeRoutes, store_route, DataMessage, read_route_for, ROOT_DIR
 from network.common.security import generate_symmetric_key, encrypt_message, generate_keys, serialize_key_public, \
-    encrypt_symmetric_key, decrypt_symmetric_key, decrypt_message
+    encrypt_symmetric_key, decrypt_symmetric_key, decrypt_message, encrypt_file, decrypt_file
 from network.common.utils import debug_log, debug_warning, debug_exception
 
 BUFFER_SIZE = 1024 * 1024
@@ -106,16 +106,16 @@ class Router:
             return
 
         # Read and encode the file if it's a file
-        binary: str = ""
+        binary: bytes = bytes()
         if is_file and filedata:
-            binary = base64.b64encode(filedata).decode("utf-8")
+            binary = base64.b64encode(filedata)
 
         # Generate symmetric key and encrypt message
         sym_key = generate_symmetric_key()
         encrypted_message = encrypt_message(message, sym_key)
 
         # Encrypt the binary data if it's a file
-        encrypted_binary = encrypt_message(binary, sym_key) if is_file else ""
+        encrypted_binary = encrypt_file(binary, sym_key) if is_file else ""
 
         # Get public key of last router and store next_node
         next_node: DataNode = route.paths[1]
@@ -221,7 +221,7 @@ class Router:
             # Handle file message if it is a file
             if data_message.is_file:
                 enc_binary = data_message.binary
-                binary = decrypt_message(enc_binary, sym_key)
+                binary = decrypt_file(enc_binary, sym_key)
                 decoded_message = base64.b64decode(binary)
                 file_path = os.path.join(ROOT_DIR, "received", self.name, f"received_file_{message}")
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -257,7 +257,7 @@ class Router:
             next_node_client_socket.connect((next_node.ip, next_node.port))
             next_node_client_socket.sendall(json_message.encode('utf-8'))
             debug_log(self.NAME,
-                      f"Message SENT to {next_node.name}: {json_message[:50]}")
+                      f"Message SENT to {next_node.name}: {json_message}")
             next_node_client_socket.close()
         except Exception as ex:
             debug_exception(self.NAME,

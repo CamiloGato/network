@@ -91,5 +91,8 @@ class Network:
 
                 all_routes.append(route_data)
 
-        node_routes: NodeRoutes = NodeRoutes(data_node, all_routes)
+        node_routes: NodeRoutes = NodeRoutes(
+            node=data_node,
+            routes=all_routes
+        )
         return node_routes
