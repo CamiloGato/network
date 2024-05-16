@@ -10,8 +10,7 @@ from network.common.security import generate_symmetric_key, encrypt_message, gen
     encrypt_symmetric_key, decrypt_symmetric_key, decrypt_message
 from network.common.utils import debug_log, debug_warning, debug_exception
 
-BUFFER_SIZE = 1024 * 1024
-
+BUFFER_SIZE = 1024 * 1024 * 20
 
 class Router:
     def __init__(self,
@@ -41,6 +40,9 @@ class Router:
 
         # Threading Lock
         self.lock = threading.Lock()
+
+        # Buffer for incomplete messages
+        self.incomplete_messages: Dict[Tuple[str, int], str] = {}
 
     def connect_to_controller(self) -> None:
         try:
@@ -80,7 +82,7 @@ class Router:
                 debug_exception(self.NAME,
                                 f"Error processing received routes: {ex}")
 
-    def send_message(self, destination: str, message: str, is_file: bool):
+    def send_message(self, destination: str, message: str, is_file: bool, filedata: bytes = None):
         # Find route to destination
         route: DataRoute = read_route_for(self.name, destination)
         if not route:
@@ -89,18 +91,16 @@ class Router:
             return
 
         # Read and encode the file if it's a file
-        if is_file:
-            if not os.path.exists(message):
-                debug_warning(self.NAME,
-                              f"File {message} does not exist")
-                return
-            with open(message, 'rb') as file:
-                message_data = file.read()
-                message = base64.b64encode(message_data).decode('utf-8')
+        binary: str = ""
+        if is_file and filedata:
+            binary = base64.b64encode(filedata).decode("utf-8")
 
         # Generate symmetric key and encrypt message
         sym_key = generate_symmetric_key()
         encrypted_message = encrypt_message(message, sym_key)
+
+        # Encrypt the binary data if it's a file
+        encrypted_binary = encrypt_message(binary, sym_key) if is_file else ""
 
         # Get public key of last router and store next_node
         next_node: DataNode = route.paths[1]
@@ -118,7 +118,8 @@ class Router:
             message=encrypted_message,
             path=route.paths[1:],  # Remaining path
             key=encrypted_sym_key,
-            is_file=is_file
+            is_file=is_file,
+            binary=encrypted_binary
         )
         json_message = json.dumps(data_message.__dict__())
         try:
@@ -126,7 +127,7 @@ class Router:
             next_node_client_socket.connect((next_node.ip, next_node.port))
             next_node_client_socket.sendall(json_message.encode('utf-8'))
             debug_log(self.NAME,
-                      f"Message SENT to {next_node.name}: {json_message}")
+                      f"Message SENT to {next_node.name}: {json_message[:50]}")
             next_node_client_socket.close()
         except Exception as ex:
             debug_exception(self.NAME,
@@ -162,6 +163,7 @@ class Router:
 
     def read_messages(self, client_socket: socket.socket, address: Tuple[str, int]):
         try:
+            buffer = ""
             while True:
                 data: bytes = client_socket.recv(BUFFER_SIZE)
                 if not data:
@@ -169,65 +171,73 @@ class Router:
                               f"Connection closed by {address}")
                     break
 
-                message_decoded: str = data.decode('utf-8')
-                debug_log(self.NAME,
-                          f"Received message: {message_decoded}")
+                buffer += data.decode('utf-8')
 
-                if DataMessage.is_message(message_decoded):
-                    message_json: Dict = json.loads(message_decoded)
-                    data_message: DataMessage = DataMessage.from_json(message_json)
+                while True:
+                    try:
+                        # Try to parse the buffer as a JSON message
+                        message_json, end_index = json.JSONDecoder().raw_decode(buffer)
+                        buffer = buffer[end_index:].lstrip()
+                        self.process_message(message_json, address)
+                    except json.JSONDecodeError:
+                        # Not enough data to decode a full message
+                        break
 
-                    # Check if this router is the current node in the path
-                    if data_message.is_current_node(self.name):
-                        # Check if this router is the final destination
-                        if data_message.is_destine(self.name):
-                            enc_message = data_message.message
-                            enc_sym_key = data_message.key
-
-                            sym_key = decrypt_symmetric_key(enc_sym_key, self.private_key)
-                            message = decrypt_message(enc_message, sym_key)
-                            debug_log(self.NAME,
-                                      f"Decrypted message: {message}")
-                            # Handle file message if it is a file
-                            if data_message.is_file:
-                                decoded_message = base64.b64decode(message)
-                                file_path = os.path.join(ROOT_DIR, "received", f"/received_file_{self.name}")
-                                with open(file_path, 'wb') as file:
-                                    file.write(decoded_message)
-                                    debug_log(self.NAME,
-                                              f"File saved as received_file_{self.name}")
-                        else:
-                            # Get the next node before popping the current node
-                            next_node = data_message.path[1] if len(data_message.path) > 1 else None
-                            # Pop the current node from the path
-                            data_message.path.pop(0)
-
-                            if next_node:
-                                json_message = json.dumps(data_message.__dict__())
-                                try:
-                                    next_node_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                                    next_node_client_socket.connect((next_node.ip, next_node.port))
-                                    next_node_client_socket.sendall(json_message.encode('utf-8'))
-                                    debug_log(self.NAME,
-                                              f"Message SENT to {next_node.name}: {json_message}")
-                                    next_node_client_socket.close()
-                                except Exception as ex:
-                                    debug_exception(self.NAME,
-                                                    f"Failed to send message to {next_node.name}: {ex}")
-
-                            else:
-                                debug_warning(self.NAME,
-                                              "No next node found in the path. Message cannot be forwarded.")
-                    else:
-                        debug_warning(self.NAME,
-                                      f"Forbidden Message {data_message.message}")
-                else:
-                    continue
         except Exception as ex:
             debug_exception(self.NAME,
                             f"Error Reading Messages: {ex}")
         finally:
             self.close_client(client_socket, address)
+
+    def process_message(self, message_json: Dict, address: Tuple[str, int]):
+        data_message: DataMessage = DataMessage.from_json(message_json)
+
+        # Check if this router is the current node in the path
+        if data_message.is_current_node(self.name):
+            # Check if this router is the final destination
+            if data_message.is_destine(self.name):
+                enc_message = data_message.message
+                enc_sym_key = data_message.key
+
+                sym_key = decrypt_symmetric_key(enc_sym_key, self.private_key)
+                message = decrypt_message(enc_message, sym_key)
+                debug_log(self.NAME,
+                          f"Decrypted message: {message}")
+                # Handle file message if it is a file
+                if data_message.is_file:
+                    enc_binary = data_message.binary
+                    binary = decrypt_message(enc_binary, sym_key)
+                    decoded_message = base64.b64decode(binary)
+                    file_path = os.path.join(ROOT_DIR, "received", self.name, f"received_file_{message}")
+                    with open(file_path, 'wb') as file:
+                        file.write(decoded_message)
+                        debug_log(self.NAME,
+                                  f"File saved as {file_path}")
+            else:
+                # Get the next node before popping the current node
+                next_node = data_message.path[1] if len(data_message.path) > 1 else None
+                # Pop the current node from the path
+                data_message.path.pop(0)
+
+                if next_node:
+                    json_message = json.dumps(data_message.__dict__())
+                    try:
+                        next_node_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        next_node_client_socket.connect((next_node.ip, next_node.port))
+                        next_node_client_socket.sendall(json_message.encode('utf-8'))
+                        debug_log(self.NAME,
+                                  f"Message SENT to {next_node.name}: {json_message[:50]}")
+                        next_node_client_socket.close()
+                    except Exception as ex:
+                        debug_exception(self.NAME,
+                                        f"Failed to send message to {next_node.name}: {ex}")
+
+                else:
+                    debug_warning(self.NAME,
+                                  "No next node found in the path. Message cannot be forwarded.")
+        else:
+            debug_warning(self.NAME,
+                          f"Forbidden Message {data_message.message}")
 
     def close_client(self, client: socket.socket, address: Tuple[str, int]) -> None:
         with self.lock:

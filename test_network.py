@@ -70,7 +70,11 @@ def main():
     ]
 
     # Create Controller
-    controller = create_controller("localhost", 8079, network)
+    controller = create_controller(
+        "localhost",
+        8079,
+        network
+    )
     time.sleep(3)
 
     for node, (host, port) in nodes.items():
@@ -133,7 +137,7 @@ def main():
     # Test sending an audio file
     with open('source/test_audio.wav', 'rb') as f:
         filedata = f.read()
-    ca1.send_message(ny.name, 'Sending an audio file', is_file=True, filename='audiofile.wav', filedata=filedata)
+    ca1.send_message(ny.name, 'audio_new.wav', is_file=True, filedata=filedata)
 
     time.sleep(10)
     controller.stop()
