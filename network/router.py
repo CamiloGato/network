@@ -233,6 +233,12 @@ class Router:
 
         data_message: DataMessage = DataMessage.from_json(message_json)
 
+        # If there's no exist a rute to destination return
+        if len(data_message.path) < 1:
+            debug_warning(self.NAME,
+                          f"No rute found! Forbidden Message {data_message.message}")
+            return
+
         # Check if this router is the current node in the path
         if not data_message.is_current_node(self.name):
             debug_warning(self.NAME,
