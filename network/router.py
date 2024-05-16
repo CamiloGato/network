@@ -3,6 +3,7 @@ import base64
 import json
 import socket
 import threading
+import time
 from typing import Dict, Tuple
 
 from network.common.data import DataNode, DataRoute, NodeRoutes, store_route, DataMessage, read_route_for, ROOT_DIR
@@ -39,8 +40,10 @@ class Router:
         # Security Keys
         self.private_key, self.public_key = generate_keys()
 
-        # Threading Lock
+        # Threading Lock and Events
         self.lock = threading.Lock()
+        self.running = threading.Event()
+        self.running.set()
 
     def connect_to_controller(self) -> None:
         try:
@@ -59,23 +62,37 @@ class Router:
             json_message = json.dumps(message_auth.__dict__())
             self.controller_socket.sendall(json_message.encode('utf-8'))
 
-            threading.Thread(target=self.routes_checker).start()
+            routes_thread = threading.Thread(target=self.routes_checker)
+            heartbeat_thread = threading.Thread(target=self.send_heartbeat)
+
+            routes_thread.start()
+            heartbeat_thread.start()
 
         except Exception as ex:
             debug_exception(self.NAME,
                             f"Failed to connect to controller: {ex}")
 
+    def send_heartbeat(self):
+        while self.running.is_set():
+            try:
+                self.controller_socket.sendall(json.dumps({"type": "ping", "name": self.name}).encode('utf-8'))
+            except Exception as ex:
+                debug_exception(self.NAME, f"Error sending heartbeat: {ex}")
+            time.sleep(5)  # Send a ping every 5 seconds
+
     def routes_checker(self):
-        while True:
+        while self.running.is_set():
             try:
                 routes = self.controller_socket.recv(BUFFER_SIZE)
                 if routes:
-                    routes_decoded = routes.decode('utf-8')
-                    routes_json = json.loads(routes_decoded)
-                    store_route(self.name, NodeRoutes.from_json(routes_json))
-                else:
-                    debug_warning(self.NAME,
-                                  "Received empty route update.")
+                    try:
+                        routes_decoded = routes.decode('utf-8')
+                        routes_json = json.loads(routes_decoded)
+                        store_route(self.name, NodeRoutes.from_json(routes_json))
+                    except Exception as ex:
+                        debug_warning(self.NAME,
+                                      f"Received empty route update.\nError: {ex}")
+
             except Exception as ex:
                 debug_exception(self.NAME,
                                 f"Error processing received routes: {ex}")
@@ -129,7 +146,8 @@ class Router:
             debug_log(self.NAME,
                       f"Router Server started.")
 
-            threading.Thread(target=self.accept_clients).start()
+            accept_thread = threading.Thread(target=self.accept_clients)
+            accept_thread.start()
 
         except Exception as ex:
             self.server_socket.close()
@@ -137,22 +155,25 @@ class Router:
                             f"Router Server start error: {ex}")
 
     def accept_clients(self):
-        while True:
+        while self.running.is_set():
             try:
                 client_socket, address = self.server_socket.accept()
                 with self.lock:
                     self.clients[address] = client_socket
                 debug_log(self.NAME,
                           f"Accepted connection from {address}")
-                threading.Thread(target=self.read_messages, args=(client_socket, address)).start()
+                client_thread = threading.Thread(target=self.read_messages, args=(client_socket, address))
+                client_thread.start()
+
             except Exception as ex:
-                debug_exception(self.NAME,
-                                f"Error accepting clients: {ex}")
+                if self.running.is_set():
+                    debug_exception(self.NAME,
+                                    f"Error accepting clients: {ex}")
 
     def read_messages(self, client_socket: socket.socket, address: Tuple[str, int]):
         try:
             buffer = ""
-            while True:
+            while self.running.is_set():
                 data: bytes = client_socket.recv(BUFFER_SIZE)
                 if not data:
                     debug_log(self.NAME,
@@ -172,8 +193,9 @@ class Router:
                         break
 
         except Exception as ex:
-            debug_exception(self.NAME,
-                            f"Error Reading Messages: {ex}")
+            if self.running.is_set():
+                debug_exception(self.NAME,
+                                f"Error Reading Messages: {ex}")
         finally:
             self.close_client(client_socket, address)
 
@@ -242,10 +264,24 @@ class Router:
                             f"Failed to send message to {next_node.name}: {ex}")
 
     def stop(self) -> None:
+        self.running.clear()
         self.server_socket.close()
+        try:
+            self.controller_socket.shutdown(socket.SHUT_RDWR)
+            self.controller_socket.close()
+        except Exception as ex:
+            debug_exception(self.NAME,
+                            f"Error closing controller socket: {ex}")
+
         with self.lock:
             for client in self.clients.values():
-                client.close()
+                try:
+                    client.shutdown(socket.SHUT_RDWR)
+                    client.close()
+                except Exception as ex:
+                    debug_exception(self.NAME,
+                                    f"Error closing client socket: {ex}")
             self.clients.clear()
-            debug_warning(self.NAME,
-                          "Router Server Stopped.")
+
+        debug_warning(self.NAME,
+                      "Router Server Stopped.")

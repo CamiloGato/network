@@ -1,11 +1,11 @@
 import json
 import socket
 import threading
+import time
 from typing import Dict
 
 from network.common.data import DataNode, NodeRoutes
 from network.common.network import Network
-from network.common.tcp_functions import check_connection
 from network.common.utils import debug_log, debug_exception, debug_warning
 
 BUFFER_SIZE = 1024 * 1024
@@ -27,9 +27,12 @@ class Controller:
         # Socket configuration & clients
         self.server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients: Dict[DataNode, socket.socket] = {}
+        self.last_ping_times: Dict[str, float] = {}
 
-        # Threading Lock
+        # Threading Lock and Event
         self.lock = threading.Lock()
+        self.running = threading.Event()
+        self.running.set()
 
     def start_server(self) -> None:
         try:
@@ -39,7 +42,11 @@ class Controller:
             debug_log(self.NAME,
                       f"Controller started.")
 
-            threading.Thread(target=self.accept_connections).start()
+            accept_thread = threading.Thread(target=self.accept_connections)
+            heartbeat_thread = threading.Thread(target=self.check_heartbeats)
+
+            accept_thread.start()
+            heartbeat_thread.start()
 
         except Exception as ex:
             self.server_socket.close()
@@ -48,7 +55,7 @@ class Controller:
 
     def accept_connections(self) -> None:
         try:
-            while True:
+            while self.running.is_set():
                 # Accept connections
                 client, address = self.server_socket.accept()
                 auth: bytes = client.recv(BUFFER_SIZE)
@@ -58,46 +65,66 @@ class Controller:
 
                 with self.lock:
                     self.clients[node] = client
+                    self.last_ping_times[node.name] = time.time()
 
                 self.add_node(node)
 
                 debug_log(self.NAME,
                           f"Connection established with {address}")
 
-                threading.Thread(target=self.client_connection, args=(client, node)).start()
-                threading.Thread(target=self.handle_client, args=(client, node)).start()
-        except Exception as e:
-            debug_exception(self.NAME,
-                            f"Error accepting connections: {e}")
+                client_thread = threading.Thread(target=self.handle_client, args=(client, node))
+                client_thread.start()
 
-    def client_connection(self, client: socket.socket, node: DataNode) -> None:
-        try:
-            while True:
-                if not check_connection(client):
-                    debug_warning(self.NAME,
-                                  f"Connection Lost - {node}")
-                    break
-        except Exception as ex:
-            debug_exception(self.NAME,
-                            f"Error handling connection {node}: {ex}")
-        finally:
-            self.close_client(client, node)
+        except Exception as e:
+            if self.running.is_set():
+                debug_exception(self.NAME,
+                                f"Error accepting connections: {e}")
 
     def handle_client(self, client: socket.socket, node: DataNode) -> None:
         try:
-            while True:
+            buffer = ""
+            while self.running.is_set():
                 data: bytes = client.recv(BUFFER_SIZE)
                 if not data:
                     break
-                data_decoded: str = data.decode("utf-8")
-                data_message: Dict = json.loads(data_decoded)
 
-                debug_log(self.NAME,
-                          f"{node.name} sends: {data_message}")
+                buffer += data.decode('utf-8')
 
+                while True:
+                    try:
+                        # Try to parse the buffer as a JSON message
+                        message_json, end_index = json.JSONDecoder().raw_decode(buffer)
+                        buffer = buffer[end_index:].lstrip()
+                        self.process_message(message_json, node)
+                    except json.JSONDecodeError:
+                        # Not enough data to decode a full message
+                        break
         except Exception as ex:
-            debug_exception(self.NAME,
-                            f"Error handling client {node.name}: {ex}")
+            if self.running.is_set():
+                debug_exception(self.NAME,
+                                f"Error handling client {node.name}: {ex}")
+        finally:
+            self.close_client(client, node)
+
+    def process_message(self, message_json: Dict, node: DataNode):
+        message_type = message_json.get("type")
+        if message_type == "ping":
+            with self.lock:
+                self.last_ping_times[node.name] = time.time()
+        else:
+            debug_log(self.NAME,
+                      f"{node.name} sends: {message_json}")
+
+    def check_heartbeats(self):
+        while self.running.is_set():
+            current_time = time.time()
+            with self.lock:
+                for node, last_ping in list(self.last_ping_times.items()):
+                    if current_time - last_ping > 10:
+                        debug_warning(self.NAME,
+                                      f"Router {node} is considered disconnected.")
+                        self.remove_client_by_name(node)
+            time.sleep(5)
 
     def send_routes(self, node: DataNode) -> None:
         try:
@@ -118,9 +145,17 @@ class Controller:
             if client in self.clients.values():
                 client.close()
                 del self.clients[node]
+                del self.last_ping_times[node.name]
                 self.close_node(node)
             debug_warning(self.NAME,
                           f"Connection closed with {node.name}")
+
+    def remove_client_by_name(self, node_name: str) -> None:
+        with self.lock:
+            for node, client in list(self.clients.items()):
+                if node.name == node_name:
+                    self.close_client(client, node)
+                    break
 
     def add_node(self, node: DataNode) -> None:
         self.network.add_node(node)
@@ -137,10 +172,17 @@ class Controller:
             self.network.add_edge(u, v, w)
 
     def stop(self) -> None:
+        self.running.clear()
         self.server_socket.close()
         with self.lock:
             for client in self.clients.values():
-                client.close()
+                try:
+                    client.shutdown(socket.SHUT_RDWR)
+                    client.close()
+                except Exception as ex:
+                    debug_exception(self.NAME,
+                                    f"Error closing client socket: {ex}")
             self.clients.clear()
-            debug_warning(self.NAME,
-                          "Controller Stopped.")
+
+        debug_warning(self.NAME,
+                      "Controller Server Stopped.")

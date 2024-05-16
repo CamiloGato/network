@@ -111,34 +111,31 @@ def main():
 
     ca1 = None
     ny = None
+    ut = None
 
     for router in routers:
         if router.name == "CA1":
             ca1 = router
             print("FOUND CA1")
-            ca1.start_server()
-            time.sleep(1)
         if router.name == "UT":
             ut = router
             print("FOUND UT")
-            ut.start_server()
-            time.sleep(1)
-        if router.name == "MI":
-            mi = router
-            print("FOUND MI")
-            mi.start_server()
-            time.sleep(1)
         if router.name == "NY":
             ny = router
             print("FOUND NY")
-            ny.start_server()
-            time.sleep(1)
+        router.start_server()
+        time.sleep(2)
 
     time.sleep(2)
     print("\n\nTest: Sending Messages from CA1 to NY")
 
     # Test sending a text message
     ca1.send_message(ny.name, 'Hello, this is a text message!', is_file=False)
+
+    time.sleep(10)
+    print("\n\nTest: Remove Node UT")
+
+    ut.stop()
 
     time.sleep(10)
     print("\n\nTest: Sending AUDIO FILES from CA1 to NY")
