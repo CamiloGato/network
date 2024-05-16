@@ -28,7 +28,7 @@ class Network:
 
     def remove_node(self, node: DataNode) -> None:
         """Remove a node from the graph if it exists."""
-        if node in self.graph:
+        if node.name in self.graph:
             self.graph.remove_node(node.name)
         else:
             print(f"Node {node} not found in the graph.")

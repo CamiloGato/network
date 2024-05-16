@@ -12,6 +12,7 @@ from network.common.utils import debug_log, debug_warning, debug_exception
 
 BUFFER_SIZE = 1024 * 1024
 
+
 class Router:
     def __init__(self,
                  controller_host: str,
@@ -209,6 +210,7 @@ class Router:
                     binary = decrypt_message(enc_binary, sym_key)
                     decoded_message = base64.b64decode(binary)
                     file_path = os.path.join(ROOT_DIR, "received", self.name, f"received_file_{message}")
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
                     with open(file_path, 'wb') as file:
                         file.write(decoded_message)
                         debug_log(self.NAME,
