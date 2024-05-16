@@ -10,7 +10,7 @@ from network.common.security import generate_symmetric_key, encrypt_message, gen
     encrypt_symmetric_key, decrypt_symmetric_key, decrypt_message
 from network.common.utils import debug_log, debug_warning, debug_exception
 
-BUFFER_SIZE = 1024 * 1024 * 20
+BUFFER_SIZE = 1024 * 1024
 
 class Router:
     def __init__(self,
