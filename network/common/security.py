@@ -11,7 +11,8 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 def generate_keys() -> (RSAPrivateKey, RSAPublicKey):
     private_key: RSAPrivateKey = rsa.generate_private_key(
         public_exponent=65537,
-        key_size=2048
+        key_size=2048,
+        backend=default_backend()
     )
     public_key: RSAPublicKey = private_key.public_key()
     return private_key, public_key
@@ -25,11 +26,16 @@ def serialize_key_private(key: RSAPrivateKey) -> bytes:
     )
 
 
-def serialize_key_public(key: RSAPublicKey) -> bytes:
-    return key.public_bytes(
+def serialize_key_public(key: RSAPublicKey) -> str:
+    pem = key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
+    return pem.decode('utf-8')
+
+
+def deserialize_key_public(key_str: str) -> RSAPublicKey:
+    return serialization.load_pem_public_key(key_str.encode('utf-8'), backend=default_backend())
 
 
 def generate_symmetric_key():
@@ -40,7 +46,7 @@ def encrypt_message(message, key):
     iv = urandom(16)
     cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
     encryptor = cipher.encryptor()
-    ct = encryptor.update(message.encode() + encryptor.finalize())
+    ct = encryptor.update(message.encode()) + encryptor.finalize()
     return base64.b64encode(iv + ct).decode()
 
 
@@ -53,7 +59,8 @@ def decrypt_message(enc_message, key):
     return (de_encryptor.update(ct) + de_encryptor.finalize()).decode()
 
 
-def encrypt_symmetric_key(sym_key, public_key):
+def encrypt_symmetric_key(sym_key, public_key_str):
+    public_key = deserialize_key_public(public_key_str)
     encrypted_key = public_key.encrypt(
         sym_key,
         padding.OAEP(

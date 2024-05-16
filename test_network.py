@@ -101,6 +101,36 @@ def main():
 
     print("Updated Routes")
 
+    ca1: Router
+    ut: Router
+    mi: Router
+    ny: Router
+
+    for router in routers:
+        if router.name == "CA1":
+            ca1 = router
+            print("FOUNDED CA1")
+        if router.name == "UT":
+            ut = router
+            print("FOUNDED UT")
+        if router.name == "MI":
+            mi = router
+            print("FOUNDED MI")
+        if router.name == "NY":
+            ny = router
+            print("FOUNDED NY")
+
+    ca1.start_server()
+    time.sleep(1)
+    ut.start_server()
+    time.sleep(1)
+    mi.start_server()
+    time.sleep(1)
+    ny.start_server()
+    time.sleep(2)
+
+    ca1.send_message(ny.name, "KLK WAWAWA")
+
     input("End Execution: ")
     controller.stop()
 

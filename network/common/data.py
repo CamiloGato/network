@@ -2,6 +2,8 @@ import json
 import os
 from typing import List, Dict
 
+from network.common.utils import debug_warning
+
 ROOT_DIR: str = (
     os.path.dirname(
         os.path.dirname(
@@ -27,8 +29,13 @@ class DataNode:
         }
 
     @classmethod
-    def from_json(cls, json_data: Dict):
-        return cls(json_data['name'], json_data['ip'], json_data['port'], json_data['public_key'])
+    def from_json(cls, data: dict):
+        return cls(
+            name=data["name"],
+            ip=data["ip"],
+            port=data["port"],
+            public_key=data.get("public_key", "")
+        )
 
 
 class DataRoute:
@@ -39,17 +46,21 @@ class DataRoute:
 
     def __dict__(self):
         return {
-            "source": DataNode(self.source.name, self.source.ip, self.source.port).__dict__(),
+            "source": self.source.__dict__(),
             "destination": self.destination.__dict__(),
-            "path": [DataNode(node.name, node.ip, node.port).__dict__() for node in self.paths]
+            "path": [node.__dict__() for node in self.paths]
         }
 
     @classmethod
     def from_json(cls, json_data: Dict):
         source: DataNode = DataNode.from_json(json_data['source'])
         destination: DataNode = DataNode.from_json(json_data['destination'])
-        path: List[DataNode] = [DataNode.from_json(data) for data in json_data['path']]
-        return cls(source, destination, path)
+        paths: List[DataNode] = [DataNode.from_json(data) for data in json_data['path']]
+        return cls(
+            source=source,
+            destination=destination,
+            paths=paths
+        )
 
 
 class NodeRoutes:
@@ -67,13 +78,19 @@ class NodeRoutes:
     def from_json(cls, json_data: Dict):
         node: DataNode = DataNode.from_json(json_data['node'])
         routes: List[DataRoute] = [DataRoute.from_json(data) for data in json_data['routes']]
-        return cls(node, routes)
+        return cls(
+            node=node,
+            routes=routes
+        )
 
     @classmethod
     def default(cls):
         default_node: DataNode = DataNode("Default", "None", 0, "None")
         default_routes: List[DataRoute] = []
-        return cls(default_node, default_routes)
+        return cls(
+            node=default_node,
+            routes=default_routes
+        )
 
 
 class DataMessage:
@@ -89,12 +106,11 @@ class DataMessage:
             "key": self.key
         }
 
-    def is_current_node(self, node: str) -> bool:
-        current_node: DataNode = self.path.pop(0)
-        return current_node.name == node
+    def is_current_node(self, node_name: str) -> bool:
+        return self.path[0].name == node_name
 
-    def is_destine(self, node: str) -> bool:
-        return self.path[-1] == node
+    def is_destine(self, node_name: str) -> bool:
+        return self.path[-1].name == node_name
 
     def get_current_node(self) -> DataNode:
         return self.path[0]
@@ -112,7 +128,12 @@ class DataMessage:
     def from_json(cls, json_data: Dict):
         message: str = json_data['message']
         path: List[DataNode] = [DataNode.from_json(data) for data in json_data['path']]
-        return cls(message, path)
+        key: str = json_data.get('key', "")
+        return cls(
+            message=message,
+            path=path,
+            key=key
+        )
 
 
 def store_route(name: str, routes: NodeRoutes):
@@ -121,3 +142,23 @@ def store_route(name: str, routes: NodeRoutes):
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "w") as f:
         json.dump(routes.__dict__(), f, indent=4)
+
+
+def read_route_for(name: str, destination: str):
+    filename: str = f"routes_{name}.json"
+    file_path: str = os.path.join(ROOT_DIR, "routes", filename)
+
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        debug_warning(f"DATA.PY for node: {name}",
+                      f"Route file not found for {name}")
+        return None
+
+    # Read and parse the JSON file
+    with open(file_path, "r") as f:
+        data = json.load(f)
+        node_routes: NodeRoutes = NodeRoutes.from_json(data)
+
+    # Find the specific route to the given destination
+    route: DataRoute = next((route for route in node_routes.routes if route.destination.name == destination), None)
+    return route
